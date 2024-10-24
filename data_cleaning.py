@@ -1,3 +1,4 @@
+
 import numpy as np 
 import pandas as pd
 
@@ -32,8 +33,7 @@ def pivot_data(df):
     return df_pivot
 def feature_engineering(df_plays):
     #features for plays df 
-    df_plays['time_remaining'] = df_plays['quarter'].map({1: 45, 2: 30, 3: 15, 4: 0}) + \
-                               df_plays['gameClock'].apply(lambda x: int(x.split(':')[0]) + int(x.split(':')[1])/60)
+    df_plays['time_remaining'] = df_plays['quarter'].map({1: 45, 2: 30, 3: 15, 4: 0}) +                                df_plays['gameClock'].apply(lambda x: int(x.split(':')[0]) + int(x.split(':')[1])/60)
     df_plays['score_differential'] = df_plays['preSnapHomeScore'] - df_plays['preSnapVisitorScore']
     return df_plays
 def get_position_count(df):
@@ -43,3 +43,4 @@ def get_position_count(df):
     #create a position_pivot column so that each player has a unique value during the play
     df['position_pivot']=df['position']+'_'+df['pos_count'].astype(str)
     return df
+

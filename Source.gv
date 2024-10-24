@@ -1,0 +1,159 @@
+digraph {
+	0 [label="o_standard|mean|WR_2 >0.562541" color=black shape=ellipse]
+	1 [label="s|max|T_3 >0.5" color=black shape=ellipse]
+	0 -> 1 [label=No]
+	2 [label="s|max|T_3 >0.5" color=black shape=ellipse]
+	0 -> 2 [label=Yes]
+	3 [label="s|max|G_1 >0.437125" color=black shape=ellipse]
+	1 -> 3 [label=No]
+	4 [label="s|max|G_1 >0.437125" color=black shape=ellipse]
+	1 -> 4 [label=Yes]
+	5 [label="s|max|G_1 >0.437125" color=black shape=ellipse]
+	2 -> 5 [label=No]
+	6 [label="s|max|G_1 >0.437125" color=black shape=ellipse]
+	2 -> 6 [label=Yes]
+	7 [label="roof_open =1" color=black shape=ellipse]
+	3 -> 7 [label=No]
+	8 [label="roof_open =1" color=black shape=ellipse]
+	3 -> 8 [label=Yes]
+	9 [label="roof_open =1" color=black shape=ellipse]
+	4 -> 9 [label=No]
+	10 [label="roof_open =1" color=black shape=ellipse]
+	4 -> 10 [label=Yes]
+	11 [label="roof_open =1" color=black shape=ellipse]
+	5 -> 11 [label=No]
+	12 [label="roof_open =1" color=black shape=ellipse]
+	5 -> 12 [label=Yes]
+	13 [label="roof_open =1" color=black shape=ellipse]
+	6 -> 13 [label=No]
+	14 [label="roof_open =1" color=black shape=ellipse]
+	6 -> 14 [label=Yes]
+	15 [label="a|max|G_2 >0.5" color=black shape=ellipse]
+	7 -> 15 [label=No]
+	16 [label="a|max|G_2 >0.5" color=black shape=ellipse]
+	7 -> 16 [label=Yes]
+	17 [label="a|max|G_2 >0.5" color=black shape=ellipse]
+	8 -> 17 [label=No]
+	18 [label="a|max|G_2 >0.5" color=black shape=ellipse]
+	8 -> 18 [label=Yes]
+	19 [label="a|max|G_2 >0.5" color=black shape=ellipse]
+	9 -> 19 [label=No]
+	20 [label="a|max|G_2 >0.5" color=black shape=ellipse]
+	9 -> 20 [label=Yes]
+	21 [label="a|max|G_2 >0.5" color=black shape=ellipse]
+	10 -> 21 [label=No]
+	22 [label="a|max|G_2 >0.5" color=black shape=ellipse]
+	10 -> 22 [label=Yes]
+	23 [label="a|max|G_2 >0.5" color=black shape=ellipse]
+	11 -> 23 [label=No]
+	24 [label="a|max|G_2 >0.5" color=black shape=ellipse]
+	11 -> 24 [label=Yes]
+	25 [label="a|max|G_2 >0.5" color=black shape=ellipse]
+	12 -> 25 [label=No]
+	26 [label="a|max|G_2 >0.5" color=black shape=ellipse]
+	12 -> 26 [label=Yes]
+	27 [label="a|max|G_2 >0.5" color=black shape=ellipse]
+	13 -> 27 [label=No]
+	28 [label="a|max|G_2 >0.5" color=black shape=ellipse]
+	13 -> 28 [label=Yes]
+	29 [label="a|max|G_2 >0.5" color=black shape=ellipse]
+	14 -> 29 [label=No]
+	30 [label="a|max|G_2 >0.5" color=black shape=ellipse]
+	14 -> 30 [label=Yes]
+	31 [label=" -0.466
+" color=red shape=rect]
+	15 -> 31 [label=No]
+	32 [label=" -0.074
+" color=red shape=rect]
+	15 -> 32 [label=Yes]
+	33 [label=" 0.891
+" color=red shape=rect]
+	16 -> 33 [label=No]
+	34 [label=" 0.000
+" color=red shape=rect]
+	16 -> 34 [label=Yes]
+	35 [label=" -0.230
+" color=red shape=rect]
+	17 -> 35 [label=No]
+	36 [label=" 0.326
+" color=red shape=rect]
+	17 -> 36 [label=Yes]
+	37 [label=" 0.947
+" color=red shape=rect]
+	18 -> 37 [label=No]
+	38 [label=" 0.000
+" color=red shape=rect]
+	18 -> 38 [label=Yes]
+	39 [label=" -0.558
+" color=red shape=rect]
+	19 -> 39 [label=No]
+	40 [label=" 0.375
+" color=red shape=rect]
+	19 -> 40 [label=Yes]
+	41 [label=" 1.150
+" color=red shape=rect]
+	20 -> 41 [label=No]
+	42 [label=" 0.000
+" color=red shape=rect]
+	20 -> 42 [label=Yes]
+	43 [label=" -0.414
+" color=red shape=rect]
+	21 -> 43 [label=No]
+	44 [label=" 0.673
+" color=red shape=rect]
+	21 -> 44 [label=Yes]
+	45 [label=" 1.370
+" color=red shape=rect]
+	22 -> 45 [label=No]
+	46 [label=" 0.000
+" color=red shape=rect]
+	22 -> 46 [label=Yes]
+	47 [label=" -0.215
+" color=red shape=rect]
+	23 -> 47 [label=No]
+	48 [label=" 0.041
+" color=red shape=rect]
+	23 -> 48 [label=Yes]
+	49 [label=" 0.854
+" color=red shape=rect]
+	24 -> 49 [label=No]
+	50 [label=" 0.000
+" color=red shape=rect]
+	24 -> 50 [label=Yes]
+	51 [label=" -0.105
+" color=red shape=rect]
+	25 -> 51 [label=No]
+	52 [label=" 0.294
+" color=red shape=rect]
+	25 -> 52 [label=Yes]
+	53 [label=" 1.397
+" color=red shape=rect]
+	26 -> 53 [label=No]
+	54 [label=" 0.414
+" color=red shape=rect]
+	26 -> 54 [label=Yes]
+	55 [label=" -0.362
+" color=red shape=rect]
+	27 -> 55 [label=No]
+	56 [label=" 0.486
+" color=red shape=rect]
+	27 -> 56 [label=Yes]
+	57 [label=" 1.300
+" color=red shape=rect]
+	28 -> 57 [label=No]
+	58 [label=" 0.000
+" color=red shape=rect]
+	28 -> 58 [label=Yes]
+	59 [label=" -0.154
+" color=red shape=rect]
+	29 -> 59 [label=No]
+	60 [label=" 0.891
+" color=red shape=rect]
+	29 -> 60 [label=Yes]
+	61 [label=" 1.640
+" color=red shape=rect]
+	30 -> 61 [label=No]
+	62 [label=" 0.000
+" color=red shape=rect]
+	30 -> 62 [label=Yes]
+}

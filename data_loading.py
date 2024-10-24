@@ -70,5 +70,3 @@ def aggregate_data(  plays_fname, player_plays_fname, players_fname, tracking_fn
     df_agg2=pd.merge(df_agg1, df_games, on='gameId', how='inner')
     df_final=label_run_or_pass(get_position_count(pd.merge(df_agg2, df_players, on='nflId', how='inner')))
     return pivot_data(df_final)
-
-

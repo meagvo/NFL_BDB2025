@@ -27,6 +27,7 @@ def pivot_data(df):
        'dir_standard|std', 'x_standard|mean', 'x_standard|std',
        'y_standard|mean', 'y_standard|std', 'shiftSinceLineset', 'motionSinceLineset']).fillna(0).reset_index() 
     df_pivot.columns =df_pivot.columns.map('|'.join).str.strip('|')
+    df_pivot.replace({False:0, True:1}, inplace=True)
     df_pivot = pd.get_dummies(df_pivot, columns=['offenseFormation','receiverAlignment', 'roof', 'surface'])
     return df_pivot
 def feature_engineering(df_plays):

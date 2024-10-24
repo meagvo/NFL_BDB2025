@@ -1,7 +1,7 @@
 import os 
 import pandas as pd 
 import numpy as np
-from data_cleaning import normalize_tracking
+from data_cleaning import normalize_tracking, feature_engineering, get_position_count, label_run_or_pass, pivot_data
 import nfl_data_py as nfl
 def load_weather_data():
 #get game weather
@@ -20,6 +20,15 @@ def load_stadium_data():
     df_stadium=nfl.import_schedules([2022])
     df_stadium=df_stadium[df_stadium['week']<=9][[ 'old_game_id','roof', 'surface']]
     return df_stadium
+def load_previous_year_data(year: int):
+    #pull previous year pass rush data by team
+    df_rush2021=nfl.import_ngs_data(stat_type='rushing', years=[year])[['team_abbr', 'rush_attempts']].groupby('team_abbr').sum().reset_index()
+    df_pass2021=nfl.import_ngs_data(stat_type='passing', years=[year])[['team_abbr', 'attempts']].groupby('team_abbr').sum().reset_index()
+    df_pass_rush2021=pd.merge(df_rush2021, df_pass2021, on='team_abbr', how='outer')
+    df_pass_rush2021['pass_rush_ratio']=np.round((df_pass_rush2021['attempts']/df_pass_rush2021['rush_attempts']), 2)
+    df_pass_rush2021.drop(columns=['rush_attempts', 'attempts'], inplace=True)
+    return df_pass_rush2021
+
 def load_tracking_data(tracking_fname: str):
     df_tracking=pd.read_csv(tracking_fname)
     df_tracking=df_tracking[ (df_tracking['frameType']=='BEFORE_SNAP')& (df_tracking['event']!='huddle_break_offense')]
@@ -46,7 +55,7 @@ def aggregate_data(  plays_fname, player_plays_fname, players_fname, tracking_fn
     
     df_games=pd.merge(df_games, load_stadium_data(),left_on='gameId', right_on='old_game_id', how='left')
     df_games=pd.merge(df_games, load_weather_data(),on='gameId', how='left')
-    df_plays = pd.read_csv(plays_fname)
+    df_plays = feature_engineering(pd.read_csv(plays_fname))
     df_tracking = pd.concat(
         [load_tracking_data(tracking_fname) for tracking_fname in tracking_fname_list]
     )
@@ -55,10 +64,11 @@ def aggregate_data(  plays_fname, player_plays_fname, players_fname, tracking_fn
     df_tracking.columns=df_tracking.columns.map('|'.join).str.strip('|')
     df_players = pd.read_csv(players_fname)
     df_player_plays=pd.read_csv(player_plays_fname)
+    df_player_plays=pd.merge(df_player_plays, load_previous_year_data(2021), left_on='teamAbbr', right_on='team_abbr', how='outer')
     # aggregate plays, tracking, players tables
     df_agg1=pd.merge(pd.merge(df_tracking, df_plays, left_on=[ 'gameId', 'playId','club'], right_on=[ 'gameId', 'playId', 'possessionTeam'], how='inner'), df_player_plays, left_on=[ 'gameId', 'playId', 'nflId'], right_on=[ 'gameId', 'playId', 'nflId'], how='left' )
     df_agg2=pd.merge(df_agg1, df_games, on='gameId', how='inner')
-    df_final=pd.merge(df_agg2, df_players, on='nflId', how='inner')
-    return df_final
+    df_final=label_run_or_pass(get_position_count(pd.merge(df_agg2, df_players, on='nflId', how='inner')))
+    return pivot_data(df_final)
 
 

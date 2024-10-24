@@ -111,14 +111,17 @@ prompt_toolkit==3.0.48
 protobuf==4.25.5
 psutil==6.1.0
 pure_eval==0.2.3
+pyarrow==17.0.0
 pycparser==2.22
+pydot==3.0.2
 Pygments==2.18.0
 pyparsing==3.2.0
 python-dateutil==2.9.0.post0
 python-json-logger==2.0.7
 pytz==2024.2
-pywin32==308
-pywinpty==2.0.14
+lightgbm==4.5.0
+#pywin32==308
+#pywinpty==2.0.14
 PyYAML==6.0.2
 pyzmq==26.2.0
 referencing==0.35.1
@@ -130,6 +133,7 @@ rpds-py==0.20.0
 scikit-learn==1.5.2
 scipy==1.13.1
 Send2Trash==1.8.3
+seaborn==0.13.2
 shap==0.46.0
 six==1.16.0
 slicer==0.0.8
@@ -142,8 +146,8 @@ tenacity==9.0.0
 tensorboard==2.17.1
 tensorboard-data-server==0.7.2
 tensorflow==2.17.0
-tensorflow-intel==2.17.0
-tensorflow-io-gcs-filesystem==0.31.0
+#tensorflow-intel==2.17.0
+#tensorflow-io-gcs-filesystem==0.31.0
 termcolor==2.5.0
 terminado==0.18.1
 threadpoolctl==3.5.0
@@ -164,4 +168,5 @@ websocket-client==1.8.0
 Werkzeug==3.0.4
 widgetsnbextension==4.0.13
 wrapt==1.16.0
+xgboost==2.1.1
 zipp==3.20.2

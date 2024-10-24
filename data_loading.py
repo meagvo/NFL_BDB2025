@@ -1,0 +1,64 @@
+import os 
+import pandas as pd 
+import numpy as np
+from data_cleaning import normalize_tracking
+import nfl_data_py as nfl
+def load_weather_data():
+#get game weather
+    weather_df=nfl.import_pbp_data(years=[2022])[['old_game_id_x',  'weather' ]].drop_duplicates()
+    weather_df['gameId']=weather_df['old_game_id_x'].astype(int)
+    weather_df['Rain']=np.where(weather_df['weather'].str.contains('Rain'), 1, 0)
+    weather_df[['temp', 'humidity', 'wind']]=weather_df['weather'].str.split(',', expand=True).iloc[:, :3]
+    weather_df['temp'] = weather_df['temp'].str.split(':', expand=True).iloc[:, 1:2]
+    weather_df['temp']=weather_df['temp'].str.extract('(\d+)').astype(float)
+    weather_df['humidity'] = weather_df['humidity'].str.extract('(\d+)').astype(float)
+    weather_df['wind'] = weather_df['wind'].str.extract('(\d+)').astype(float)
+    return weather_df
+#pull stadium data for current season games
+
+def load_stadium_data():
+    df_stadium=nfl.import_schedules([2022])
+    df_stadium=df_stadium[df_stadium['week']<=9][[ 'old_game_id','roof', 'surface']]
+    return df_stadium
+def load_tracking_data(tracking_fname: str):
+    df_tracking=pd.read_csv(tracking_fname)
+    df_tracking=df_tracking[ (df_tracking['frameType']=='BEFORE_SNAP')& (df_tracking['event']!='huddle_break_offense')]
+    df_tracking['gameplayId']=df_tracking['gameId'].astype(str)+'_'+df_tracking['playId'].astype(str)
+    playstodrop=df_tracking[df_tracking['event'].isin(['huddle_start_offense', 'timeout_away'])][['gameplayId']].drop_duplicates() #plays with huddle start or timeout we should drop
+    df_tracking = df_tracking[~df_tracking['gameplayId'].isin(playstodrop['gameplayId'])]
+    
+    return normalize_tracking(df_tracking)
+
+def aggregate_data(  plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname):
+    """
+    Create the aggregate dataframe by merging together the plays data and tracking data
+
+    :param plays_fname: the filename of the plays data
+    :param player_plays_fname: the filename of the playerplay data
+    :param players_fname: the filename of the players data
+    :param tracking_fname_list: a list of filenames of all tracking data
+
+    :return df_final: the aggregate dataframe
+    """
+
+    # import files
+    df_games=pd.read_csv(games_fname)
+    
+    df_games=pd.merge(df_games, load_stadium_data(),left_on='gameId', right_on='old_game_id', how='left')
+    df_games=pd.merge(df_games, load_weather_data(),on='gameId', how='left')
+    df_plays = pd.read_csv(plays_fname)
+    df_tracking = pd.concat(
+        [load_tracking_data(tracking_fname) for tracking_fname in tracking_fname_list]
+    )
+    df_tracking=df_tracking[['gameId', 'playId', 'nflId','club' ,'o_standard', 'dir_standard', 'x_standard', 'y_standard', 's', 'a', 'dis']].groupby(['gameId', 'playId', 'nflId','club']).agg({'s':[ 'max',],'a':[ 'max'], 
+    'o_standard':['mean', 'std'],'dis':['sum'],'dir_standard':['mean', 'std'], 'x_standard':['mean', 'std'], 'y_standard':['mean', 'std']}).reset_index()
+    df_tracking.columns=df_tracking.columns.map('|'.join).str.strip('|')
+    df_players = pd.read_csv(players_fname)
+    df_player_plays=pd.read_csv(player_plays_fname)
+    # aggregate plays, tracking, players tables
+    df_agg1=pd.merge(pd.merge(df_tracking, df_plays, left_on=[ 'gameId', 'playId','club'], right_on=[ 'gameId', 'playId', 'possessionTeam'], how='inner'), df_player_plays, left_on=[ 'gameId', 'playId', 'nflId'], right_on=[ 'gameId', 'playId', 'nflId'], how='left' )
+    df_agg2=pd.merge(df_agg1, df_games, on='gameId', how='inner')
+    df_final=pd.merge(df_agg2, df_players, on='nflId', how='inner')
+    return df_final
+
+

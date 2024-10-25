@@ -3,3 +3,4 @@ catboost_info/
 *.pyc
 .DS_Store
 events.out.tfevents
+__pycache__

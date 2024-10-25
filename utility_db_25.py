@@ -8,6 +8,12 @@ import matplotlib.pyplot as plt
 import optuna
 from sklearn.pipeline import Pipeline
 from catboost import CatBoostClassifier
+import nfl_data_py as nfl
+import pandas as pd
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import MinMaxScaler
+from catboost import  Pool, MetricVisualizer
+    
 
 def mark_columns(df,features):
     numeric_columns=[]
@@ -161,3 +167,163 @@ def optuna_call(transformer,X,y,SKF,n_trials):
         return scores.mean()
     
     return tune(objective)
+
+#############################################
+#
+#  function: proc_external
+#  purpose: process external data sources
+#
+#############################################
+
+def proc_external(xp_df, pr_df, cf_df, cu_df, df_games, df_plays, merged_pivot):
+
+    # import ftn, nflverse play-by-play
+    pbp = nfl.import_pbp_data([2022])
+    ftn = nfl.import_ftn_data([2022])
+
+    # make key types play nice
+    pbp_ids = pbp[['play_id','game_id','old_game_id_x']]
+    ftn['nflverse_play_id'] = ftn['nflverse_play_id'].astype(int)
+    pbp_ids['play_id'] = pbp_ids['play_id'].astype(int)
+    ftn['nflverse_game_id'] = ftn['nflverse_game_id'].astype(str)
+    pbp_ids['game_id'] = pbp_ids['game_id'].astype(str)
+
+    # merge nflverse keys s.t. ftn data can join into merged_pivot
+    ftn_merged = pbp_ids.merge(ftn,how='left',left_on=['play_id','game_id'],
+                                right_on=['nflverse_play_id','nflverse_game_id'])
+
+    ftn_merged = ftn_merged[['play_id','old_game_id_x','n_offense_backfield',
+                            'n_defense_box','is_no_huddle','is_motion']].rename(columns={'old_game_id_x':'gameId',
+                                                                                        'play_id':'playId'})
+
+    # re-cast ID's back to int
+    ftn_merged['gameId'] = ftn_merged['gameId'].astype(int)
+    ftn_merged['playId'] = ftn_merged['playId'].astype(int)
+
+
+    # merge in team pass-ratio, ftn data
+    merged_id_df = merged_pivot[['gameId','playId']]
+    merged_base = merged_id_df.merge(ftn_merged,how='left',on=['gameId','playId'])
+    merged_base = merged_base.merge(pr_df,how='left',on=['gameId','playId'])
+    merged_base = merged_base.merge(xp_df,how='left',on=['gameId','playId'])
+
+    # add in coverage data
+    merged_base = merged_base.merge(df_games[['gameId','week']].drop_duplicates(),how='left',on=['gameId'])
+    merged_base = merged_base.merge(df_plays[['gameId','playId',
+                                          'possessionTeam','defensiveTeam']].drop_duplicates(),
+                                how='left',on=['gameId','playId'])
+    
+    merged_base = merged_base.merge(cf_df,how='left',on=['possessionTeam','week'])
+    merged_base = merged_base.merge(cu_df,how='left',on=['defensiveTeam','week'])
+    merged_pivot = pd.concat([merged_pivot,merged_base.iloc[:,2:]],axis=1)
+
+    # re-cast types for merged_pivot
+    merged_pivot[['is_no_huddle']] = merged_pivot[['is_no_huddle']].astype(int)
+    merged_pivot[['is_motion']] = merged_pivot[['is_motion']].astype(int)
+    merged_pivot['temp']=merged_pivot['temp'].astype(float)
+    merged_pivot['humidity']=merged_pivot['humidity'].astype(float)
+    merged_pivot['wind']=merged_pivot['wind'].astype(float)
+
+    return merged_pivot
+
+#############################################
+#
+#  function: build_transformer
+#  purpose: avoid repeating transformer code
+#
+#############################################
+
+
+# Create a transformer
+def build_transformer(imputer,numeric_columns):
+    transformer = ColumnTransformer(
+        transformers=[('pipe',Pipeline([('imputer', imputer),
+            ('scaler', MinMaxScaler())]), numeric_columns)
+        ],
+        remainder='passthrough'  # Pass through columns not specified
+    )
+    return transformer
+
+
+####################################################
+#
+#  function: get_final_features
+#  purpose: use corr. data to get "final" features
+#
+#####################################################
+
+
+def get_final_features(merged_pivot,threshold,trim_rows):
+
+    features=[]
+
+    # remove ID, other identifying/non-input columns
+    for col in merged_pivot.columns:
+        if 'Id' not in col and 'playNullifiedByPenalty' not in col and 'possessionTeam' not in col and 'defensiveTeam' not in col:
+            features.append(col)
+
+    #select final features based on correlation with target variable
+    correlations=merged_pivot[features].corr()[['pass']]
+    final_features=list(correlations[((correlations['pass']>.02) | (correlations['pass']<-.02))].T.columns.values)
+
+    # lose std dev feats. (redundant), low-record ct. feats.
+    final_features = [x for x in final_features if 'std' not in x]
+    final_features= merged_pivot[final_features].sum().astype(int).sort_values().index[trim_rows:]
+
+    #remove other redundant features
+    threshold = threshold
+    correlation_matrix = merged_pivot[final_features].drop(columns='pass').corr()
+    highly_correlated_features = set()
+    for i in range(len(correlation_matrix.columns)):
+        for j in range(i):
+            if abs(correlation_matrix.iloc[i, j]) > threshold:
+                colname = correlation_matrix.columns[i]
+                highly_correlated_features.add(colname)
+
+    final_features=list(set(final_features)-highly_correlated_features)
+
+    return final_features
+
+
+##############################################
+#
+#  function: build_catboost
+#  purpose: construct catboost model, feats.
+#
+##############################################
+
+def build_catboost(final_features, merged_pivot, imputer):
+
+    X=merged_pivot[final_features]
+    y=merged_pivot['pass']
+
+    # delineate numeric, categorical columns
+    numeric_columns=[]
+    is_cat = (X.dtypes != float)
+
+    for feature, feat_is_cat in is_cat.to_dict().items():
+       if feat_is_cat:
+            X[feature].fillna(0, inplace=True)
+            X[feature].replace([np.inf, -np.inf], 0, inplace=True)
+       else:
+            numeric_columns.append(feature)
+            
+    # build transformer on purely numeric columns, transform X
+    transformer = build_transformer(imputer,numeric_columns)
+    X_transform=transformer.fit_transform(X)
+    X_transform = pd.DataFrame(X_transform, columns=final_features)
+
+    for feature, feat_is_cat in is_cat.to_dict().items():
+        if feat_is_cat:
+            X_transform[feature].fillna(0, inplace=True)
+            X_transform[feature].replace([np.inf, -np.inf], 0, inplace=True)
+            X_transform[feature]=X_transform[feature].astype(int)
+
+    # define pool, fit model
+    cat_features_index = np.where(is_cat)[0]
+    pool = Pool(X_transform, y, cat_features=cat_features_index, feature_names=list(X_transform.columns))
+
+    model = CatBoostClassifier( max_depth=5,
+        verbose=False,  iterations=2).fit(pool)
+
+    return model, pool, cat_features_index, X_transform

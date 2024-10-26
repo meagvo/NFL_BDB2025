@@ -175,7 +175,7 @@ def optuna_call(transformer,X,y,SKF,n_trials):
 #
 #############################################
 
-def proc_external(xp_df, pr_df, cf_df, cu_df, df_games, df_plays, merged_pivot):
+def proc_external(xp_df, pr_df, cf_df, cu_df, df_games, df_plays, merged_pivot,inj_df):
 
     # import ftn, nflverse play-by-play
     pbp = nfl.import_pbp_data([2022])
@@ -200,7 +200,6 @@ def proc_external(xp_df, pr_df, cf_df, cu_df, df_games, df_plays, merged_pivot):
     ftn_merged['gameId'] = ftn_merged['gameId'].astype(int)
     ftn_merged['playId'] = ftn_merged['playId'].astype(int)
 
-
     # merge in team pass-ratio, ftn data
     merged_id_df = merged_pivot[['gameId','playId']]
     merged_base = merged_id_df.merge(ftn_merged,how='left',on=['gameId','playId'])
@@ -215,6 +214,15 @@ def proc_external(xp_df, pr_df, cf_df, cu_df, df_games, df_plays, merged_pivot):
     
     merged_base = merged_base.merge(cf_df,how='left',on=['possessionTeam','week'])
     merged_base = merged_base.merge(cu_df,how='left',on=['defensiveTeam','week'])
+
+    # merge in snaps lost to injury
+    merged_base = merged_base.merge(inj_df.drop(columns=['def_snaps_lost']),how='left',
+                   left_on=['possessionTeam','week'], right_on=['club_code','week']).drop(columns=['club_code'])
+    merged_base = merged_base.merge(inj_df.drop(columns=['off_snaps_lost']),how='left',
+                   left_on=['defensiveTeam','week'], right_on=['club_code','week']).drop(columns=['club_code'])
+
+
+    # pivot
     merged_pivot = pd.concat([merged_pivot,merged_base.iloc[:,2:]],axis=1)
 
     # re-cast types for merged_pivot

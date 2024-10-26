@@ -43,4 +43,8 @@ def get_position_count(df):
     #create a position_pivot column so that each player has a unique value during the play
     df['position_pivot']=df['position']+'_'+df['pos_count'].astype(str)
     return df
-
+def change_columns_types(df):
+    df[['is_no_huddle']] = df[['is_no_huddle']].astype(int)
+    df[['is_motion']] = df[['is_motion']].astype(int)
+    df['yardsToGo']=df['yardsToGo'].astype(float)
+    return df

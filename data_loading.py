@@ -28,6 +28,22 @@ def load_previous_year_data(year: int):
     df_pass_rush2021['pass_rush_ratio']=np.round((df_pass_rush2021['attempts']/df_pass_rush2021['rush_attempts']), 2)
     df_pass_rush2021.drop(columns=['rush_attempts', 'attempts'], inplace=True)
     return df_pass_rush2021
+def load_ftn():
+    pbp = nfl.import_pbp_data([2022])
+    ftn = nfl.import_ftn_data([2022])
+    pbp_ids = pbp[['play_id','game_id','old_game_id_x']]
+    ftn['nflverse_play_id'] = ftn['nflverse_play_id'].astype(int)
+    pbp_ids['play_id'] = pbp_ids['play_id'].astype(int)
+    ftn['nflverse_game_id'] = ftn['nflverse_game_id'].astype(str)
+    pbp_ids['game_id'] = pbp_ids['game_id'].astype(str)
+    ftn_merged = pbp_ids.merge(ftn,how='left',left_on=['play_id','game_id'],
+                right_on=['nflverse_play_id','nflverse_game_id'])
+    ftn_merged = ftn_merged[['play_id','old_game_id_x','n_offense_backfield',
+                            'n_defense_box','is_no_huddle','is_motion']].rename(columns={'old_game_id_x':'gameId',
+                                                                                       'play_id':'playId'})
+    ftn_merged['gameId'] = ftn_merged['gameId'].astype(int)
+    ftn_merged['playId'] = ftn_merged['playId'].astype(int)
+    return ftn_merged
 
 def load_tracking_data(tracking_fname: str):
     df_tracking=pd.read_csv(tracking_fname)
@@ -38,7 +54,7 @@ def load_tracking_data(tracking_fname: str):
     
     return normalize_tracking(df_tracking)
 
-def aggregate_data(  plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname):
+def aggregate_data(  plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cf_fname, cu_fname):
     """
     Create the aggregate dataframe by merging together the plays data and tracking data
 
@@ -68,5 +84,21 @@ def aggregate_data(  plays_fname, player_plays_fname, players_fname, tracking_fn
     # aggregate plays, tracking, players tables
     df_agg1=pd.merge(pd.merge(df_tracking, df_plays, left_on=[ 'gameId', 'playId','club'], right_on=[ 'gameId', 'playId', 'possessionTeam'], how='inner'), df_player_plays, left_on=[ 'gameId', 'playId', 'nflId'], right_on=[ 'gameId', 'playId', 'nflId'], how='left' )
     df_agg2=pd.merge(df_agg1, df_games, on='gameId', how='inner')
-    df_final=label_run_or_pass(get_position_count(pd.merge(df_agg2, df_players, on='nflId', how='inner')))
-    return pivot_data(df_final)
+    df_final=pivot_data(label_run_or_pass(get_position_count(pd.merge(df_agg2, df_players, on='nflId', how='inner'))))
+    merged_id_df = df_final[['gameId','playId']].drop_duplicates()
+    ftn_merged=load_ftn()
+    xp_df = pd.read_csv(xp_fname).drop(columns='Unnamed: 0')
+    pr_df = pd.read_csv(pr_fname).drop(columns='Unnamed: 0')
+    merged_base = merged_id_df.merge(ftn_merged,how='left',on=['gameId','playId'])
+    merged_base = merged_base.merge(pr_df,how='left',on=['gameId','playId'])
+    merged_base = merged_base.merge(xp_df,how='left',on=['gameId','playId'])
+    merged_base = merged_base.merge(df_games[['gameId','week']].drop_duplicates(),how='left',on=['gameId'])
+    merged_base = merged_base.merge(df_plays[['gameId','playId',
+                                          'possessionTeam','defensiveTeam']].drop_duplicates(),
+                                how='left',on=['gameId','playId'])
+    cf_df = pd.read_csv(cf_fname).drop(columns='Unnamed: 0')
+    cu_df = pd.read_csv(cu_fname).drop(columns='Unnamed: 0')
+    merged_base = merged_base.merge(cf_df,how='left',on=['possessionTeam','week'])
+    merged_base = merged_base.merge(cu_df,how='left',on=['defensiveTeam','week'])
+    
+    return pd.concat([df_final,merged_base.iloc[:,2:]],axis=1)

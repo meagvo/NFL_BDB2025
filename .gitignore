@@ -1,1 +1,5 @@
 *.zip
+requirements.txt
+catboost_info/
+*.pyc
+.DS_Store

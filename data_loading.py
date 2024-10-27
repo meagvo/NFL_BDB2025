@@ -54,7 +54,7 @@ def load_tracking_data(tracking_fname: str):
     
     return normalize_tracking(df_tracking)
 
-def aggregate_data(  plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cf_fname, cu_fname):
+def aggregate_data(  plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cf_fname, cu_fname, inj_fname):
     """
     Create the aggregate dataframe by merging together the plays data and tracking data
 
@@ -100,5 +100,12 @@ def aggregate_data(  plays_fname, player_plays_fname, players_fname, tracking_fn
     cu_df = pd.read_csv(cu_fname).drop(columns='Unnamed: 0')
     merged_base = merged_base.merge(cf_df,how='left',on=['possessionTeam','week'])
     merged_base = merged_base.merge(cu_df,how='left',on=['defensiveTeam','week'])
+
+    inj_df = pd.read_csv(inj_fname)
+    merged_base = merged_base.merge(inj_df.drop(columns=['def_snaps_lost']),how='left',
+                   left_on=['possessionTeam','week'], right_on=['club_code','week']).drop(columns=['club_code'])
+    merged_base = merged_base.merge(inj_df.drop(columns=['off_snaps_lost']),how='left',
+                   left_on=['defensiveTeam','week'], right_on=['club_code','week']).drop(columns=['club_code'])
+
     
     return pd.concat([df_final,merged_base.iloc[:,2:]],axis=1)

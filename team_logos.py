@@ -10,34 +10,33 @@ from PIL import Image
 
 
 def get_logo_df():
-    load_saved_data = True
-    if not load_saved_data: 
+    
     # Pull the team description 
-        logos = nfl.import_team_desc()
-        logos = logos[['team_abbr', 'team_logo_espn']]
+    logos = nfl.import_team_desc()
+    logos = logos[['team_abbr', 'team_logo_espn']]
         # Initialize an empty list for the logo file paths
-        logo_paths = []
+    logo_paths = []
 
         # Initialize an empty list for the team abbreviations
-        team_abbr = []
+    team_abbr = []
 
         # Create a folder for the image files if it doesn't exist
 
-        if not os.path.exists("logos"):
-            os.makedirs("logos")
+    if not os.path.exists("logos"):
+        os.makedirs("logos")
             # Pull the team logos from the URL and save them in the logos folder, save the file paths to
-        for team in range(len(logos)):
-            if logos['team_abbr'][team]=='NYJ':
-                urllib.request.urlretrieve(logos['team_logo_espn'][team], f"logos/{logos['team_abbr'][team]}.tif")
-                logo_paths.append(f"logos/{logos['team_abbr'][team]}.tif")
-                team_abbr.append(logos['team_abbr'][team])
-                image = Image.open(f"logos/{logos['team_abbr'][team]}.tif")
-                new_image = image.resize((500, 500))
-                new_image.save(f"logos/{logos['team_abbr'][team]}.tif")
-            else:    
-                urllib.request.urlretrieve(logos['team_logo_espn'][team], f"logos/{logos['team_abbr'][team]}.tif")
-                logo_paths.append(f"logos/{logos['team_abbr'][team]}.tif")
-                team_abbr.append(logos['team_abbr'][team])
+    for team in range(len(logos)):
+        if logos['team_abbr'][team]=='NYJ':
+            urllib.request.urlretrieve(logos['team_logo_espn'][team], f"logos/{logos['team_abbr'][team]}.tif")
+            logo_paths.append(f"logos/{logos['team_abbr'][team]}.tif")
+            team_abbr.append(logos['team_abbr'][team])
+            image = Image.open(f"logos/{logos['team_abbr'][team]}.tif")
+            new_image = image.resize((500, 500))
+            new_image.save(f"logos/{logos['team_abbr'][team]}.tif")
+        else:    
+            urllib.request.urlretrieve(logos['team_logo_espn'][team], f"logos/{logos['team_abbr'][team]}.tif")
+            logo_paths.append(f"logos/{logos['team_abbr'][team]}.tif")
+            team_abbr.append(logos['team_abbr'][team])
             
                 
 

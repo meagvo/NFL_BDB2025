@@ -314,6 +314,45 @@ def get_final_features(train_data,threshold,trim_rows):
 
     return final_features
 
+##############################################
+#
+#  function: get columns to make momentum score
+#  purpose: sum all shiftSinceLineset values 
+#
+##############################################
+
+
+def get_momentum_cols(final_features):
+    momentum_cols=[]
+    for f in final_features:
+        if 'shiftSinceLineset' in f:
+            momentum_cols.append(f)
+    return momentum_cols
+def create_momentum_index(data, momentum_cols):
+    data['presnap_momentum']=data[momentum_cols].sum(axis=1)
+    data.drop(columns=momentum_cols, inplace=True)
+    return data
+
+
+##############################################
+#
+#  function: get columns for motion complexity score
+#  purpose: sum all motionSinceLineset columns
+#
+##############################################
+
+
+def get_motion_cols(final_features):
+    motion_cols=[]
+    for f in final_features:
+        if 'motionSinceLineset' in f:
+            motion_cols.append(f)
+    return motion_cols
+def motion_complexity_score(data, motion_cols):
+    data['presnap_motion_complexity']=data[motion_cols].sum(axis=1)
+    data.drop(columns=motion_cols, inplace=True)
+    return data
+
 
 ##############################################
 #

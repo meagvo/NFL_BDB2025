@@ -46,5 +46,5 @@ def get_position_count(df):
 def change_columns_types(df):
     df[['is_no_huddle']] = df[['is_no_huddle']].astype(int)
     df[['is_motion']] = df[['is_motion']].astype(int)
-    df['yardsToGo']=df['yardsToGo'].astype(float)
+    #df['yardsToGo']=df['yardsToGo'].astype(float)
     return df

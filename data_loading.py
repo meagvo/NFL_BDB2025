@@ -96,8 +96,8 @@ def aggregate_data(  plays_fname, player_plays_fname, players_fname, tracking_fn
     merged_base = merged_base.merge(df_plays[['gameId','playId',
                                           'possessionTeam','defensiveTeam']].drop_duplicates(),
                                 how='left',on=['gameId','playId'])
-    cf_df = pd.read_csv(cf_fname).drop(columns='Unnamed: 0')
-    cu_df = pd.read_csv(cu_fname).drop(columns='Unnamed: 0')
+    cf_df = pd.read_csv(cf_fname)
+    cu_df = pd.read_csv(cu_fname)
     merged_base = merged_base.merge(cf_df,how='left',on=['possessionTeam','week'])
     merged_base = merged_base.merge(cu_df,how='left',on=['defensiveTeam','week'])
 

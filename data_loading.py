@@ -54,7 +54,14 @@ def load_tracking_data(tracking_fname: str):
     
     return normalize_tracking(df_tracking)
 
-def aggregate_data(  plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cf_fname, cu_fname, inj_fname):
+def aggregate_data(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname, agg_flag):
+    # Route to whether we want test or train data
+    if agg_flag == 'train':
+        return aggregate_train(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname)
+    elif agg_flag == 'test':
+        return aggregate_test(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname)
+    
+def aggregate_test(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname):
     """
     Create the aggregate dataframe by merging together the plays data and tracking data
 
@@ -96,16 +103,128 @@ def aggregate_data(  plays_fname, player_plays_fname, players_fname, tracking_fn
     merged_base = merged_base.merge(df_plays[['gameId','playId',
                                           'possessionTeam','defensiveTeam']].drop_duplicates(),
                                 how='left',on=['gameId','playId'])
-    cf_df = pd.read_csv(cf_fname)
+    
     cu_df = pd.read_csv(cu_fname)
-    merged_base = merged_base.merge(cf_df,how='left',on=['possessionTeam','week'])
     merged_base = merged_base.merge(cu_df,how='left',on=['defensiveTeam','week'])
 
+    # add injury data
     inj_df = pd.read_csv(inj_fname)
-    merged_base = merged_base.merge(inj_df.drop(columns=['def_snaps_lost']),how='left',
-                   left_on=['possessionTeam','week'], right_on=['club_code','week']).drop(columns=['club_code'])
-    merged_base = merged_base.merge(inj_df.drop(columns=['off_snaps_lost']),how='left',
-                   left_on=['defensiveTeam','week'], right_on=['club_code','week']).drop(columns=['club_code'])
 
+    # merge in offensive snaps
+    merged_base = merged_base.merge(inj_df.drop(columns=['def_snaps_lost']),how='left',
+                    left_on=['possessionTeam','week'], right_on=['team','week']).drop(columns=['team'])
+
+    # merge in defensive snaps
+    merged_base = merged_base.merge(inj_df.drop(columns=['off_snaps_lost']),how='left',
+                    left_on=['defensiveTeam','week'], right_on=['team','week']).drop(columns=['team'])
+
+    return pd.concat([df_final,merged_base.iloc[:,2:]],axis=1)
+
+def aggregate_train(  plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname):
+    """
+    Create the aggregate dataframe by merging together the plays data and tracking data
+
+    :param plays_fname: the filename of the plays data
+    :param player_plays_fname: the filename of the playerplay data
+    :param players_fname: the filename of the players data
+    :param tracking_fname_list: a list of filenames of all tracking data
+
+    :return df_final: the aggregate dataframe
+    """
+
+    # import files
+    df_games=pd.read_csv(games_fname)
     
+    df_games=pd.merge(df_games, load_stadium_data(),left_on='gameId', right_on='old_game_id', how='left')
+    df_games=pd.merge(df_games, load_weather_data(),on='gameId', how='left')
+    df_plays = feature_engineering(pd.read_csv(plays_fname))
+    df_tracking = pd.concat(
+        [load_tracking_data(tracking_fname) for tracking_fname in tracking_fname_list]
+    )
+    df_tracking=df_tracking[['gameId', 'playId', 'nflId','club' ,'o_standard', 'dir_standard', 'x_standard', 'y_standard', 's', 'a', 'dis']].groupby(['gameId', 'playId', 'nflId','club']).agg({'s':[ 'max',],'a':[ 'max'], 
+    'o_standard':['mean', 'std'],'dis':['sum'],'dir_standard':['mean', 'std'], 'x_standard':['mean', 'std'], 'y_standard':['mean', 'std']}).reset_index()
+    df_tracking.columns=df_tracking.columns.map('|'.join).str.strip('|')
+    df_players = pd.read_csv(players_fname)
+    df_player_plays=pd.read_csv(player_plays_fname)
+    df_player_plays=pd.merge(df_player_plays, load_previous_year_data(2021), left_on='teamAbbr', right_on='team_abbr', how='outer')
+    # aggregate plays, tracking, players tables
+    df_agg1=pd.merge(pd.merge(df_tracking, df_plays, left_on=[ 'gameId', 'playId','club'], right_on=[ 'gameId', 'playId', 'possessionTeam'], how='inner'), df_player_plays, left_on=[ 'gameId', 'playId', 'nflId'], right_on=[ 'gameId', 'playId', 'nflId'], how='left' )
+    df_agg2=pd.merge(df_agg1, df_games, on='gameId', how='inner')
+    df_final=pivot_data(label_run_or_pass(get_position_count(pd.merge(df_agg2, df_players, on='nflId', how='inner'))))
+    merged_id_df = df_final[['gameId','playId']].drop_duplicates()
+    
+    # add week info
+    merged_base = merged_id_df.merge(df_games[['gameId','week']].drop_duplicates(),how='left',on=['gameId'])
+
+    # add in team info
+    merged_base = merged_base.merge(df_plays[['gameId','playId',
+                                          'possessionTeam','defensiveTeam']].drop_duplicates(),
+                                how='left',on=['gameId','playId'])
+
+    w1_ids = merged_base[merged_base['week'] == 1][['gameId','playId','week','possessionTeam','defensiveTeam']]
+    w2_on_ids = merged_base[merged_base['week'] > 1][['gameId','playId','week','possessionTeam','defensiveTeam']]
+
+    cov_21 = pd.read_csv(c21_fname)
+    team_pr_21 = pd.read_csv(pr21_fname)
+    xp_df = pd.read_csv(xp_fname).drop(columns='Unnamed: 0')
+    pr_df = pd.read_csv(pr_fname).drop(columns='Unnamed: 0')
+
+
+    # merge defensive pass rates for '21 into week 1
+    w1_pr = w1_ids.merge(team_pr_21.drop(columns=['pass_rate_off']).rename(columns={'possessionTeam':'defensiveTeam'}),
+                        on='defensiveTeam',how='left')
+
+    # offensive
+    w1_pr = w1_pr.merge(team_pr_21.drop(columns=['pass_rate_def']),on='possessionTeam',how='left')
+
+    # set week 1 xpass to just be the team's default pass rate
+    w1_pr['off_xpass'] = w1_pr['pass_rate_off'].copy()
+    w1_pr['def_xpass'] = w1_pr['pass_rate_def'].copy()
+
+    # subset to only defensive features, rename features
+    cov_def = cov_21[[x for x in cov_21.columns if '_off' not in x]].rename(columns={'possessionTeam':'defensiveTeam'})
+    cov_def = cov_def.rename(columns={'cover_2_def':'Cover-2_def','cover_0_def':'Cover-0_def'})
+
+    #merge into running dataframe
+    w1_merged = w1_pr.merge(cov_def,how='left',on='defensiveTeam')
+
+    cu_df = pd.read_csv(cu_fname)
+    cu_df['week'] = cu_df['week'].astype(int)
+    cu_w2_on = w2_on_ids.merge(cu_df,how='left',left_on=['defensiveTeam','week'],right_on=['defensiveTeam','week'])
+
+    # integrate pass rate df
+    df_w2_on = cu_w2_on.merge(pr_df,how='left',on=['gameId','playId'])
+    df_w2_on = df_w2_on.merge(xp_df,how='left',on=['gameId','playId'])
+
+    #make columns ordered for week 2 onward
+    w1_merged = w1_merged[df_w2_on.columns]
+
+    # aggregate week 2-onward and week 1
+    merged_base = pd.concat([w1_merged,df_w2_on],axis=0)
+
+    # add injury data
+    inj_df = pd.read_csv(inj_fname)
+
+    # merge in offensive snaps
+    merged_base = merged_base.merge(inj_df.drop(columns=['def_snaps_lost']),how='left',
+                    left_on=['possessionTeam','week'], right_on=['team','week']).drop(columns=['team'])
+
+    # merge in defensive snaps
+    merged_base = merged_base.merge(inj_df.drop(columns=['off_snaps_lost']),how='left',
+                    left_on=['defensiveTeam','week'], right_on=['team','week']).drop(columns=['team'])
+
+    # add ftn
+    ftn_merged = load_ftn()
+    merged_base = merged_base.merge(ftn_merged,how='left',on=['gameId','playId'])
+
+    # order df correctly
+    cols_final = ['gameId', 'playId', 'n_offense_backfield', 'n_defense_box',
+        'is_no_huddle', 'is_motion', 'pass_rate_off', 'pass_rate_def',
+        'off_xpass', 'def_xpass', 'week', 'possessionTeam', 'defensiveTeam',
+        'cover_3_def', 'cover_6_def', 'cover_1_def', 'Quarters_def',
+        'Cover-2_def', 'Cover-0_def', 'Man_def', 'Other_def', 'Zone_def',
+        'off_snaps_lost', 'def_snaps_lost']
+
+    merged_base = merged_base[cols_final]
+
     return pd.concat([df_final,merged_base.iloc[:,2:]],axis=1)

@@ -54,14 +54,14 @@ def load_tracking_data(tracking_fname: str):
     
     return normalize_tracking(df_tracking)
 
-def aggregate_data(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname, agg_flag):
+def aggregate_data(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname, qbr_fname, agg_flag):
     # Route to whether we want test or train data
     if agg_flag == 'train':
-        return aggregate_train(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname)
+        return aggregate_train(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname, qbr_fname)
     elif agg_flag == 'test':
-        return aggregate_test(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname)
+        return aggregate_test(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, qbr_fname)
     
-def aggregate_test(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname):
+def aggregate_test(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, qbr_fname):
     """
     Create the aggregate dataframe by merging together the plays data and tracking data
 
@@ -118,9 +118,15 @@ def aggregate_test(plays_fname, player_plays_fname, players_fname, tracking_fnam
     merged_base = merged_base.merge(inj_df.drop(columns=['off_snaps_lost']),how='left',
                     left_on=['defensiveTeam','week'], right_on=['team','week']).drop(columns=['team'])
 
+    # incorp qbr data, impute week 0 generic stats from years prior for direct snap plays
+    qbr_df = pd.read_csv(qbr_fname)
+    merged_base = merged_base.merge(qbr_df,how='left',on=['gameId','playId'])
+    med_dict = {'qbr_total':57.500000,'pass_val':32.661255,'run_val':3.157565,'ybc_att':2.756089,'yac_att':0.700000,'qb_plays':0}
+    merged_base.fillna(med_dict,inplace=True)
+
     return pd.concat([df_final,merged_base.iloc[:,2:]],axis=1)
 
-def aggregate_train(  plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname):
+def aggregate_train(  plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname, qbr_fname):
     """
     Create the aggregate dataframe by merging together the plays data and tracking data
 
@@ -226,5 +232,11 @@ def aggregate_train(  plays_fname, player_plays_fname, players_fname, tracking_f
         'off_snaps_lost', 'def_snaps_lost']
 
     merged_base = merged_base[cols_final]
+
+    # incorp qbr data, impute week 0 generic stats from years prior for direct snap plays
+    qbr_df = pd.read_csv(qbr_fname)
+    merged_base = merged_base.merge(qbr_df,how='left',on=['gameId','playId'])
+    med_dict = {'qbr_total':57.500000,'pass_val':32.661255,'run_val':3.157565,'ybc_att':2.756089,'yac_att':0.700000,'qb_plays':0}
+    merged_base.fillna(med_dict,inplace=True)
 
     return pd.concat([df_final,merged_base.iloc[:,2:]],axis=1)

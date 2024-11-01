@@ -417,24 +417,24 @@ def test_ML(test_data, model,final_features,transformer_impute,transformer_scale
     X=test_data[final_features]
     y_test=test_data['pass']
         
-    X_transform=transformer_impute.transform(X)
+    #X_transform=transformer_impute.transform(X)
 
-    X_transform = pd.DataFrame(X_transform, columns=final_features)
+    #X_transform = pd.DataFrame(X_transform, columns=final_features)
 
-    X_transform=transformer_scale.transform(X_transform)
+    #X_transform=transformer_scale.transform(X_transform)
 
-    X_transform = pd.DataFrame(X_transform, columns=final_features)
+    #X_transform = pd.DataFrame(X_transform, columns=final_features)
 
-    is_cat = (X.dtypes != float)
+    #is_cat = (X.dtypes != float)
 
-    X_transform = pd.DataFrame(X_transform, columns=final_features)
-    for feature, feat_is_cat in is_cat.to_dict().items():
-        if feat_is_cat:
-            X_transform[feature].fillna(0, inplace=True)
-            X_transform[feature].replace([np.inf, -np.inf], 0, inplace=True)
-            X_transform[feature]=X_transform[feature].astype(int)
+    #X_transform = pd.DataFrame(X_transform, columns=final_features)
+    #for feature, feat_is_cat in is_cat.to_dict().items():
+     #   if feat_is_cat:
+       #     X_transform[feature].fillna(0, inplace=True)
+       #     X_transform[feature].replace([np.inf, -np.inf], 0, inplace=True)
+        #    X_transform[feature]=X_transform[feature].astype(int)
 
-    y_pred=model.predict(X_transform)
+    y_pred=model.predict(X)
     print(f"AUC --> {roc_auc_score(y_test, y_pred)}")
     print(f"Accuracy --> {accuracy_score(y_test, y_pred)}")
     

@@ -124,6 +124,15 @@ def aggregate_test(plays_fname, player_plays_fname, players_fname, tracking_fnam
     med_dict = {'qbr_total':57.500000,'pass_val':32.661255,'run_val':3.157565,'ybc_att':2.756089,'yac_att':0.700000,'qb_plays':0}
     merged_base.fillna(med_dict,inplace=True)
 
+    # add situational xpass
+    nfl_pbp = nfl.clean_nfl_data(nfl.import_pbp_data([2022]))
+    xpass_df = nfl_pbp[nfl_pbp['season_type'] == 'REG'][['play_id','old_game_id_x','xpass']].rename(columns={'xpass':'xpass_situational'})
+    xpass_df['play_id'] = xpass_df['play_id'].astype(int)
+    xpass_df['old_game_id_x'] = xpass_df['old_game_id_x'].astype(int)
+
+    merged_base = merged_base.merge(xpass_df,how='left',left_on=['gameId','playId'], right_on=['old_game_id_x','play_id'])
+    merged_base['xpass_situational'] = merged_base['xpass_situational'].fillna(.5)
+ 
     return pd.concat([df_final,merged_base.iloc[:,2:]],axis=1)
 
 def aggregate_train(  plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname, qbr_fname):
@@ -238,5 +247,16 @@ def aggregate_train(  plays_fname, player_plays_fname, players_fname, tracking_f
     merged_base = merged_base.merge(qbr_df,how='left',on=['gameId','playId'])
     med_dict = {'qbr_total':57.500000,'pass_val':32.661255,'run_val':3.157565,'ybc_att':2.756089,'yac_att':0.700000,'qb_plays':0}
     merged_base.fillna(med_dict,inplace=True)
+
+    # add situational xpass
+    
+    nfl_pbp = nfl.clean_nfl_data(nfl.import_pbp_data([2022]))
+    xpass_df = nfl_pbp[nfl_pbp['season_type'] == 'REG'][['play_id','old_game_id_x','xpass']].rename(columns={'xpass':'xpass_situational'})
+    xpass_df['play_id'] = xpass_df['play_id'].astype(int)
+    xpass_df['old_game_id_x'] = xpass_df['old_game_id_x'].astype(int)
+
+    merged_base = merged_base.merge(xpass_df,how='left',left_on=['gameId','playId'], right_on=['old_game_id_x','play_id'])
+    merged_base['xpass_situational'] = merged_base['xpass_situational'].fillna(.5)
+    
 
     return pd.concat([df_final,merged_base.iloc[:,2:]],axis=1)

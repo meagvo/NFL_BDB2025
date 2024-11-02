@@ -294,7 +294,7 @@ def get_final_features(train_data,threshold,trim_rows):
 
     #select final features based on correlation with target variable
     correlations=train_data[features].corr()[['pass']]
-    final_features=list(correlations[((correlations['pass']>.07) | (correlations['pass']<-.07))].T.columns.values)
+    final_features=list(correlations[((correlations['pass']>.09) | (correlations['pass']<-.09))].T.columns.values)
 
     # lose std dev feats. (redundant), low-record ct. feats.
     final_features = [x for x in final_features if 'std' not in x]
@@ -371,12 +371,17 @@ def motion_complexity_score(data, motion_cols):
     'dir_standard|mean|WR_4',
     'dir_standard|mean|WR_5']
     for c in dir_cols:
-        data[c+'_QBdiff']=(data['dir_standard|mean|QB_1']-data[c]).astype(float)
+        data[c+'_QBdiff']=abs(data['dir_standard|mean|QB_1']-data[c].astype(float))
+    data['QBdff_TE']=data[['dir_standard|mean|TE_1_QBdiff','dir_standard|mean|TE_2_QBdiff','dir_standard|mean|TE_3_QBdiff']].sum(axis=1).astype(float)
+    data['QBdff_RB']=data[['dir_standard|mean|RB_1_QBdiff','dir_standard|mean|RB_2_QBdiff']].sum(axis=1).astype(float)
+    data['QBdff_G']=data[['dir_standard|mean|G_1_QBdiff','dir_standard|mean|G_2_QBdiff','dir_standard|mean|G_3_QBdiff']].sum(axis=1).astype(float)
+    data['QBdff_T']=data[['dir_standard|mean|T_1_QBdiff','dir_standard|mean|T_2_QBdiff','dir_standard|mean|T_3_QBdiff', 'dir_standard|mean|T_4_QBdiff']].sum(axis=1).astype(float)
+    data['QBdff_WR']=data[['dir_standard|mean|WR_1_QBdiff','dir_standard|mean|WR_2_QBdiff','dir_standard|mean|WR_3_QBdiff', 'dir_standard|mean|WR_4_QBdiff', 'dir_standard|mean|WR_5_QBdiff']].sum(axis=1).astype(float)
     data['presnap_motion_complexity']=data[motion_cols].sum(axis=1).fillna(0).astype(float)
-    data['momentum-motion']= (data['presnap_momentum']-data['presnap_motion_complexity']).astype(float)
-    data['neg_Formations']=data[['offenseFormation_SINGLEBACK' ,'offenseFormation_I_FORM']].sum(axis=1).astype(int)
+    data['motion-momentum']= (data['presnap_motion_complexity']-data['presnap_momentum']).astype(float) #how many more people moved compared to how many shifted (over 2.5 yards)
+    data['neg_Formations']=data[['offenseFormation_SINGLEBACK' ,'offenseFormation_I_FORM', 'offenseFormation_PISTOL']].sum(axis=1).astype(int)
     data['neg_alignment']=data[['receiverAlignment_1x1', 'receiverAlignment_2x1']].sum(axis=1).astype(int)
-    data.drop(columns=['offenseFormation_SINGLEBACK' ,'offenseFormation_I_FORM','receiverAlignment_1x1', 'receiverAlignment_2x1'], inplace=True)
+    data.drop(columns=['dir_standard|mean|WR_1_QBdiff','dir_standard|mean|WR_2_QBdiff','dir_standard|mean|WR_3_QBdiff', 'dir_standard|mean|WR_4_QBdiff', 'dir_standard|mean|WR_5_QBdiff','dir_standard|mean|RB_1_QBdiff','dir_standard|mean|RB_2_QBdiff','dir_standard|mean|T_1_QBdiff','dir_standard|mean|T_2_QBdiff','dir_standard|mean|T_3_QBdiff', 'dir_standard|mean|T_4_QBdiff','dir_standard|mean|G_1_QBdiff','dir_standard|mean|G_2_QBdiff','dir_standard|mean|G_3_QBdiff','dir_standard|mean|TE_1_QBdiff','dir_standard|mean|TE_2_QBdiff','dir_standard|mean|TE_3_QBdiff', 'offenseFormation_SINGLEBACK' ,'offenseFormation_I_FORM','offenseFormation_PISTOL','receiverAlignment_1x1', 'receiverAlignment_2x1'], inplace=True)
     data.drop(columns=motion_cols, inplace=True)
     data.drop(columns=dir_cols, inplace=True)
     return data

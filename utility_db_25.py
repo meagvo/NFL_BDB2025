@@ -294,7 +294,7 @@ def get_final_features(train_data,threshold,trim_rows):
 
     #select final features based on correlation with target variable
     correlations=train_data[features].corr()[['pass']]
-    final_features=list(correlations[((correlations['pass']>.03) | (correlations['pass']<-.03))].T.columns.values)
+    final_features=list(correlations[((correlations['pass']>.07) | (correlations['pass']<-.07))].T.columns.values)
 
     # lose std dev feats. (redundant), low-record ct. feats.
     final_features = [x for x in final_features if 'std' not in x]
@@ -329,7 +329,7 @@ def get_momentum_cols(final_features):
             momentum_cols.append(f)
     return momentum_cols
 def create_momentum_index(data, momentum_cols):
-    data['presnap_momentum']=data[momentum_cols].sum(axis=1)
+    data['presnap_momentum']=data[momentum_cols].sum(axis=1).fillna(0).astype(float)
     data.drop(columns=momentum_cols, inplace=True)
     return data
 
@@ -349,8 +349,36 @@ def get_motion_cols(final_features):
             motion_cols.append(f)
     return motion_cols
 def motion_complexity_score(data, motion_cols):
-    data['presnap_motion_complexity']=data[motion_cols].sum(axis=1)
+    dir_cols=['dir_standard|mean|C_1',
+    'dir_standard|mean|C_2',
+    'dir_standard|mean|FB_1',
+    'dir_standard|mean|G_1',
+    'dir_standard|mean|G_2',
+    'dir_standard|mean|G_3',
+    'dir_standard|mean|ILB_1',
+    'dir_standard|mean|RB_1',
+    'dir_standard|mean|RB_2',
+    'dir_standard|mean|TE_1',
+    'dir_standard|mean|TE_2',
+    'dir_standard|mean|TE_3',
+    'dir_standard|mean|T_1',
+    'dir_standard|mean|T_2',
+    'dir_standard|mean|T_3',
+    'dir_standard|mean|T_4',
+    'dir_standard|mean|WR_1',
+    'dir_standard|mean|WR_2',
+    'dir_standard|mean|WR_3',
+    'dir_standard|mean|WR_4',
+    'dir_standard|mean|WR_5']
+    for c in dir_cols:
+        data[c+'_QBdiff']=(data['dir_standard|mean|QB_1']-data[c]).astype(float)
+    data['presnap_motion_complexity']=data[motion_cols].sum(axis=1).fillna(0).astype(float)
+    data['momentum-motion']= (data['presnap_momentum']-data['presnap_motion_complexity']).astype(float)
+    data['neg_Formations']=data[['offenseFormation_SINGLEBACK' ,'offenseFormation_I_FORM']].sum(axis=1).astype(int)
+    data['neg_alignment']=data[['receiverAlignment_1x1', 'receiverAlignment_2x1']].sum(axis=1).astype(int)
+    data.drop(columns=['offenseFormation_SINGLEBACK' ,'offenseFormation_I_FORM','receiverAlignment_1x1', 'receiverAlignment_2x1'], inplace=True)
     data.drop(columns=motion_cols, inplace=True)
+    data.drop(columns=dir_cols, inplace=True)
     return data
 
 

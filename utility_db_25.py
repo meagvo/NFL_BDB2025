@@ -53,7 +53,7 @@ def TrainML(model_class, X, y,n_splits,SEED):
     train_A = []
     test_A = []
 
-    oof_non_rounded = np.zeros(len(y), dtype=float) 
+    
 
 
     for fold, (train_idx, test_idx) in enumerate(tqdm(SKF.split(X, y), desc="Training Folds", total=n_splits)):
@@ -65,18 +65,16 @@ def TrainML(model_class, X, y,n_splits,SEED):
 
         y_train_pred = model.predict(X_train)
         y_val_pred = model.predict(X_val)
-        oof_non_rounded[test_idx] = y_val_pred
-       
-     
+                  
 
-        train_auc = roc_auc_score(y_train, y_train_pred.round(0).astype(int))
-        val_auc = roc_auc_score(y_val, y_val_pred.round(0))
+        train_auc = roc_auc_score(y_train, y_train_pred)
+        val_auc = roc_auc_score(y_val, y_val_pred)
 
         train_S.append(train_auc)
         test_S.append(val_auc)
 
-        train_accuracy = accuracy_score(y_train, y_train_pred.round(0).astype(int))
-        val_accuracy = accuracy_score(y_val, y_val_pred.round(0))
+        train_accuracy = accuracy_score(y_train, y_train_pred)
+        val_accuracy = accuracy_score(y_val, y_val_pred)
 
         train_A.append(train_accuracy)
         test_A.append(val_accuracy)
@@ -395,16 +393,16 @@ def motion_complexity_score(data, motion_cols):
         data[c+'_QBdiff']=abs(data['dir_standard|mean|QB_1']-data[c].astype(float))
     for c in y_cols:
         data[c+'_QBdiff']=abs(data['y_standard|mean|QB_1']-data[c].astype(float))
-    data['QBdff_TE']=data[['dir_standard|mean|TE_1_QBdiff','dir_standard|mean|TE_2_QBdiff','dir_standard|mean|TE_3_QBdiff']].sum(axis=1).astype(float)
-    data['QBdff_RB']=data[['dir_standard|mean|RB_1_QBdiff','dir_standard|mean|RB_2_QBdiff']].sum(axis=1).astype(float)
-    data['QBdff_G']=data[['dir_standard|mean|G_1_QBdiff','dir_standard|mean|G_2_QBdiff','dir_standard|mean|G_3_QBdiff']].sum(axis=1).astype(float)
-    data['QBdff_T']=data[['dir_standard|mean|T_1_QBdiff','dir_standard|mean|T_2_QBdiff','dir_standard|mean|T_3_QBdiff', 'dir_standard|mean|T_4_QBdiff']].sum(axis=1).astype(float)
-    data['QBdff_WR']=data[['dir_standard|mean|WR_1_QBdiff','dir_standard|mean|WR_2_QBdiff','dir_standard|mean|WR_3_QBdiff', 'dir_standard|mean|WR_4_QBdiff', 'dir_standard|mean|WR_5_QBdiff']].sum(axis=1).astype(float)
-    data['QBdffy_TE']=data[['y_standard|mean|TE_1_QBdiff','y_standard|mean|TE_2_QBdiff','y_standard|mean|TE_3_QBdiff']].sum(axis=1).astype(float)
-    data['QBdffy_RB']=data[['y_standard|mean|RB_1_QBdiff','y_standard|mean|RB_2_QBdiff']].sum(axis=1).astype(float)
-    data['QBdffy_G']=data[['y_standard|mean|G_1_QBdiff','y_standard|mean|G_2_QBdiff','y_standard|mean|G_3_QBdiff']].sum(axis=1).astype(float)
-    data['QBdffy_T']=data[['y_standard|mean|T_1_QBdiff','y_standard|mean|T_2_QBdiff','y_standard|mean|T_3_QBdiff', 'y_standard|mean|T_4_QBdiff']].sum(axis=1).astype(float)
-    data['QBdffy_WR']=data[['y_standard|mean|WR_1_QBdiff','y_standard|mean|WR_2_QBdiff','y_standard|mean|WR_3_QBdiff', 'y_standard|mean|WR_4_QBdiff', 'y_standard|mean|WR_5_QBdiff']].sum(axis=1).astype(float)
+    data['QBdff_TE']=data[['dir_standard|mean|TE_1_QBdiff','dir_standard|mean|TE_2_QBdiff','dir_standard|mean|TE_3_QBdiff']].mean(axis=1).astype(float)
+    data['QBdff_RB']=data[['dir_standard|mean|RB_1_QBdiff','dir_standard|mean|RB_2_QBdiff']].mean(axis=1).astype(float)
+    data['QBdff_G']=data[['dir_standard|mean|G_1_QBdiff','dir_standard|mean|G_2_QBdiff','dir_standard|mean|G_3_QBdiff']].mean(axis=1).astype(float)
+    data['QBdff_T']=data[['dir_standard|mean|T_1_QBdiff','dir_standard|mean|T_2_QBdiff','dir_standard|mean|T_3_QBdiff', 'dir_standard|mean|T_4_QBdiff']].mean(axis=1).astype(float)
+    data['QBdff_WR']=data[['dir_standard|mean|WR_1_QBdiff','dir_standard|mean|WR_2_QBdiff','dir_standard|mean|WR_3_QBdiff', 'dir_standard|mean|WR_4_QBdiff', 'dir_standard|mean|WR_5_QBdiff']].mean(axis=1).astype(float)
+    data['QBdffy_TE']=data[['y_standard|mean|TE_1_QBdiff','y_standard|mean|TE_2_QBdiff','y_standard|mean|TE_3_QBdiff']].mean(axis=1).astype(float)
+    data['QBdffy_RB']=data[['y_standard|mean|RB_1_QBdiff','y_standard|mean|RB_2_QBdiff']].mean(axis=1).astype(float)
+    data['QBdffy_G']=data[['y_standard|mean|G_1_QBdiff','y_standard|mean|G_2_QBdiff','y_standard|mean|G_3_QBdiff']].mean(axis=1).astype(float)
+    data['QBdffy_T']=data[['y_standard|mean|T_1_QBdiff','y_standard|mean|T_2_QBdiff','y_standard|mean|T_3_QBdiff', 'y_standard|mean|T_4_QBdiff']].mean(axis=1).astype(float)
+    data['QBdffy_WR']=data[['y_standard|mean|WR_1_QBdiff','y_standard|mean|WR_2_QBdiff','y_standard|mean|WR_3_QBdiff', 'y_standard|mean|WR_4_QBdiff', 'y_standard|mean|WR_5_QBdiff']].mean(axis=1).astype(float)
     data['presnap_motion_complexity']=data[motion_cols].sum(axis=1).fillna(0).astype(float)
     data['motion-momentum']= (data['presnap_motion_complexity']-data['presnap_momentum']).astype(float) #how many more people moved compared to how many shifted (over 2.5 yards)
     data['neg_Formations']=data[['offenseFormation_SINGLEBACK' ,'offenseFormation_I_FORM', 'offenseFormation_PISTOL']].sum(axis=1).astype(int)

@@ -75,7 +75,7 @@ def aggregate_test(plays_fname, player_plays_fname, players_fname, tracking_fnam
 
     # import files
     df_games=pd.read_csv(games_fname)
-    
+ 
     df_games=pd.merge(df_games, load_stadium_data(),left_on='gameId', right_on='old_game_id', how='left')
     df_games=pd.merge(df_games, load_weather_data(),on='gameId', how='left')
     df_plays = feature_engineering(pd.read_csv(plays_fname))
@@ -162,6 +162,7 @@ def aggregate_train(  plays_fname, player_plays_fname, players_fname, tracking_f
     'o_standard':['mean', 'std'],'dis':['sum'],'dir_standard':['mean', 'std'], 'x_standard':['mean', 'std'], 'y_standard':['mean', 'std']}).reset_index()
     df_tracking.columns=df_tracking.columns.map('|'.join).str.strip('|')
     df_players = pd.read_csv(players_fname)
+    df_players.loc[df_players['nflId'] ==45244, 'position'] = 'TE' #update data for Taysom Hill
     df_player_plays=pd.read_csv(player_plays_fname)
     df_player_plays=pd.merge(df_player_plays, load_previous_year_data(2021), left_on='teamAbbr', right_on='team_abbr', how='outer')
     # aggregate plays, tracking, players tables

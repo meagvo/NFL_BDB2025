@@ -8,3 +8,5 @@
 !coverages_faced.csv
 !coverages_used.csv
 !qbr_data.csv
+!def_test.csv
+!def_train.csv

@@ -54,14 +54,14 @@ def load_tracking_data(tracking_fname: str):
     
     return normalize_tracking(df_tracking)
 
-def aggregate_data(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname, qbr_fname, agg_flag):
+def aggregate_data(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname, qbr_fname, def_fname, agg_flag):
     # Route to whether we want test or train data
     if agg_flag == 'train':
-        return aggregate_train(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname, qbr_fname)
+        return aggregate_train(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname, qbr_fname, def_fname)
     elif agg_flag == 'test':
-        return aggregate_test(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, qbr_fname)
+        return aggregate_test(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, qbr_fname, def_fname)
     
-def aggregate_test(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, qbr_fname):
+def aggregate_test(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, qbr_fname, def_fname):
     """
     Create the aggregate dataframe by merging together the plays data and tracking data
 
@@ -134,10 +134,19 @@ def aggregate_test(plays_fname, player_plays_fname, players_fname, tracking_fnam
 
     merged_base = merged_base.merge(xpass_df,how='left',left_on=['gameId','playId'], right_on=['old_game_id_x','play_id'])
     merged_base['xpass_situational'] = merged_base['xpass_situational'].fillna(.5)
- 
+
+    
+    # add new defensive metrics
+    def_df = pd.read_csv(def_fname).drop(columns='Unnamed: 0')
+    def_df['gameId'] = def_df['gameId'].astype(int)
+    def_df['playId'] = def_df['playId'].astype(int)
+    merged_base = merged_base.merge(def_df,how='left',left_on=['gameId','playId'], right_on=['gameId','playId'])
+
+    
+
     return pd.concat([df_final,merged_base.iloc[:,2:]],axis=1)
 
-def aggregate_train(  plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname, qbr_fname):
+def aggregate_train(  plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname, qbr_fname, def_fname):
     """
     Create the aggregate dataframe by merging together the plays data and tracking data
 
@@ -260,6 +269,13 @@ def aggregate_train(  plays_fname, player_plays_fname, players_fname, tracking_f
 
     merged_base = merged_base.merge(xpass_df,how='left',left_on=['gameId','playId'], right_on=['old_game_id_x','play_id'])
     merged_base['xpass_situational'] = merged_base['xpass_situational'].fillna(.5)
-    
 
+    
+    # add new defensive metrics
+    def_df = pd.read_csv(def_fname).drop(columns='Unnamed: 0')
+    def_df['gameId'] = def_df['gameId'].astype(int)
+    def_df['playId'] = def_df['playId'].astype(int)
+    merged_base = merged_base.merge(def_df,how='left',left_on=['gameId','playId'], right_on=['gameId','playId'])
+
+    
     return pd.concat([df_final,merged_base.iloc[:,2:]],axis=1)

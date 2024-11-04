@@ -368,6 +368,27 @@ def motion_complexity_score(data, motion_cols):
     'dir_standard|mean|WR_3',
     'dir_standard|mean|WR_4',
     'dir_standard|mean|WR_5']
+    x_cols=['x_standard|mean|C_1',
+    'x_standard|mean|C_2',
+    'x_standard|mean|FB_1',
+    'x_standard|mean|G_1',
+    'x_standard|mean|G_2',
+    'x_standard|mean|G_3',
+    'x_standard|mean|ILB_1',
+    'x_standard|mean|RB_1',
+    'x_standard|mean|RB_2',
+    'x_standard|mean|TE_1',
+    'x_standard|mean|TE_2',
+    'x_standard|mean|TE_3',
+    'x_standard|mean|T_1',
+    'x_standard|mean|T_2',
+    'x_standard|mean|T_3',
+    'x_standard|mean|T_4',
+    'x_standard|mean|WR_1',
+    'x_standard|mean|WR_2',
+    'x_standard|mean|WR_3',
+    'x_standard|mean|WR_4',
+    'x_standard|mean|WR_5']
     y_cols=['y_standard|mean|C_1',
     'y_standard|mean|C_2',
     'y_standard|mean|FB_1',
@@ -393,6 +414,8 @@ def motion_complexity_score(data, motion_cols):
         data[c+'_QBdiff']=abs(data['dir_standard|mean|QB_1']-data[c].astype(float))
     for c in y_cols:
         data[c+'_QBdiff']=abs(data['y_standard|mean|QB_1']-data[c].astype(float))
+    for c in x_cols:
+        data[c+'_QBdiff']=abs(data['x_standard|mean|QB_1']-data[c].astype(float))
     data['QBdff_TE']=data[['dir_standard|mean|TE_1_QBdiff','dir_standard|mean|TE_2_QBdiff','dir_standard|mean|TE_3_QBdiff']].mean(axis=1).astype(float)
     data['QBdff_RB']=data[['dir_standard|mean|RB_1_QBdiff','dir_standard|mean|RB_2_QBdiff']].mean(axis=1).astype(float)
     data['QBdff_G']=data[['dir_standard|mean|G_1_QBdiff','dir_standard|mean|G_2_QBdiff','dir_standard|mean|G_3_QBdiff']].mean(axis=1).astype(float)
@@ -400,6 +423,8 @@ def motion_complexity_score(data, motion_cols):
     data['QBdff_WR']=data[['dir_standard|mean|WR_1_QBdiff','dir_standard|mean|WR_2_QBdiff','dir_standard|mean|WR_3_QBdiff', 'dir_standard|mean|WR_4_QBdiff', 'dir_standard|mean|WR_5_QBdiff']].mean(axis=1).astype(float)
     data['QBdffy_TE']=data[['y_standard|mean|TE_1_QBdiff','y_standard|mean|TE_2_QBdiff','y_standard|mean|TE_3_QBdiff']].mean(axis=1).astype(float)
     data['QBdffy_RB']=data[['y_standard|mean|RB_1_QBdiff','y_standard|mean|RB_2_QBdiff']].mean(axis=1).astype(float)
+    data['QBdffx_RB']=data[['x_standard|mean|RB_1_QBdiff','x_standard|mean|RB_2_QBdiff']].mean(axis=1).astype(float)
+    data['QB_RB1_offset']=np.sqrt(np.square(data['x_standard|mean|RB_1_QBdiff']) + np.square(data['y_standard|mean|RB_1_QBdiff']**2))
     data['QBdffy_G']=data[['y_standard|mean|G_1_QBdiff','y_standard|mean|G_2_QBdiff','y_standard|mean|G_3_QBdiff']].mean(axis=1).astype(float)
     data['QBdffy_T']=data[['y_standard|mean|T_1_QBdiff','y_standard|mean|T_2_QBdiff','y_standard|mean|T_3_QBdiff', 'y_standard|mean|T_4_QBdiff']].mean(axis=1).astype(float)
     data['QBdffy_WR']=data[['y_standard|mean|WR_1_QBdiff','y_standard|mean|WR_2_QBdiff','y_standard|mean|WR_3_QBdiff', 'y_standard|mean|WR_4_QBdiff', 'y_standard|mean|WR_5_QBdiff']].mean(axis=1).astype(float)
@@ -411,6 +436,7 @@ def motion_complexity_score(data, motion_cols):
     data.drop(columns=motion_cols, inplace=True)
     data.drop(columns=dir_cols, inplace=True)
     data.drop(columns=y_cols, inplace=True)
+    data.drop(columns=x_cols, inplace=True)
     return data
 
 

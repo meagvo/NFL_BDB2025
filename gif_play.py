@@ -123,8 +123,8 @@ def create_football_field(
         return ax
     
 
-def animate_tracking_data(tracking_df, game_play):
-    n = tracking_df[tracking_df.gameplayid == game_play].frameId.max()
+def animate_tracking_data(tracking_df, game_play, movement_players, first_move_frames):
+    n = tracking_df[(tracking_df.gameplayid == game_play) ].frameId.max()
 
     # Initialize the football field plot
     fig, ax = create_football_field(return_fig=True)
@@ -156,10 +156,13 @@ def animate_tracking_data(tracking_df, game_play):
 
         frame_data = tracking_df[(tracking_df.gameplayid == game_play) & (tracking_df.frameId == frame)]
         event_for_frame = frame_data['event'].iloc[0]  # Assuming each frame has consistent event data
-        if pd.notna(event_for_frame):
-            ax.set_title(f"Tracking data for {game_play}: at frame {frame}\nEvent: {event_for_frame}", fontsize=15)
+        frame_type=frame_data['frameType'].iloc[0]
+        if event_for_frame=='line_set':
+            ax.set_title(f"Event: {event_for_frame}", fontsize=15)
+        elif event_for_frame=='ball_snap':
+            ax.set_title(f"Event: {event_for_frame}", fontsize=15)
         else:
-            ax.set_title(f"Tracking data for {game_play}: at frame {frame}", fontsize=15)
+            ax.set_title(f"Tracking data for {frame_type}: at frame {frame}", fontsize=15)
 
         for club, d in frame_data.groupby("club"):
             scatters[club].set_offsets(np.c_[d["x"].values, d["y"].values])

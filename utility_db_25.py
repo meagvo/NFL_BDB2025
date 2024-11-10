@@ -323,7 +323,7 @@ def get_final_features(train_data,threshold,trim_rows):
 def get_momentum_cols(final_features):
     momentum_cols=[]
     for f in final_features:
-        if 'shiftSinceLineset' in f:
+        if 'shiftSinceLineset' in f and 'RB' not in f:
             momentum_cols.append(f)
     return momentum_cols
 def create_momentum_index(data, momentum_cols):
@@ -343,7 +343,7 @@ def create_momentum_index(data, momentum_cols):
 def get_motion_cols(final_features):
     motion_cols=[]
     for f in final_features:
-        if 'motionSinceLineset' in f:
+        if 'motionSinceLineset' in f and 'RB' not in f:
             motion_cols.append(f)
     return motion_cols
 def motion_complexity_score(data, motion_cols):

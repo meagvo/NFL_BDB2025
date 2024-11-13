@@ -614,7 +614,8 @@ def calc_tempo(df_plays):
     # estalish new features
     df_plays['drive_pass_rate'] = pr_flat
     df_plays['mean_clocksnap'] = clock_flat
+    df_plays['mean_epa'] = epa_flat
 
     # define 'tempo'
-    df_plays['tempo'] = .1*df_plays['mean_clocksnap'] + df_plays['drive_pass_rate'] - df_plays['mean_eda']
+    df_plays['tempo'] = .1*df_plays['mean_clocksnap'] + df_plays['drive_pass_rate'] - df_plays['mean_epa']
     df_plays['tempo'] = df_plays['tempo']/df_plays['tempo'].max()

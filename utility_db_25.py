@@ -616,5 +616,5 @@ def calc_tempo(df_plays):
     df_plays['mean_clocksnap'] = clock_flat
 
     # define 'tempo'
-    df_plays['tempo'] = .1*df_plays['mean_clocksnap'] + df_plays['drive_pass_rate']
+    df_plays['tempo'] = .1*df_plays['mean_clocksnap'] + df_plays['drive_pass_rate'] - df_plays['mean_eda']
     df_plays['tempo'] = df_plays['tempo']/df_plays['tempo'].max()

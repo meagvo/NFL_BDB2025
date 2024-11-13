@@ -13,6 +13,7 @@ import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import MinMaxScaler
 from catboost import  Pool, MetricVisualizer
+from itertools import chain
     
 
 def mark_columns(df,features, nc=None,cc = None):
@@ -531,3 +532,89 @@ def test_ML(test_data, model,final_features,transformer_impute,transformer_scale
 
     cm_display.plot()
     plt.show()
+
+############################################
+#
+# function: calc_tempo
+# purpose: incorporate tempo info 
+#
+############################################
+
+def calc_tempo(df_plays):
+
+    last_team = df_plays['possessionTeam'][0] # monitor what the last team updated was, implies switch if different
+    pnum=0 # play number of drive
+    pc = 0 # pass count
+    pnum_ls = [] # play number list
+    flag_ls = [] # switch flag list
+    curr_pr_ls = [] # pass rate for current drive
+    pr_ls = [] # overall pass_rate ls
+    curr_clock_ls = [] # play clock for run
+    clock_ls = [] # play clock tracker
+    curr_epa_ls = [] #list of current drive epa
+    epa_ls = [] #overall epa list
+
+    # loop over plays
+    for index, row in df_plays.iterrows():
+
+        curr_team = row['possessionTeam']
+        flag = 0
+
+        # if we've switched teams, reset drive tracking info/add last drive's info to running list
+        if last_team != curr_team:
+
+            # reset pass count, play number for drive
+
+            last_team = curr_team # reset team to know we're on current drive now
+            pc = 0 # reset pass count, etc.
+            pnum = 0
+            flag = 1
+
+            # append current clock, epa, pass rate stats to running lists
+            clock_ls.append([10] + list(np.cumsum(curr_clock_ls)/np.arange(1,len(curr_clock_ls)+1))[:-1]) # assume 10 seconds left on play clock, can adjust later
+            pr_ls.append([.6] + curr_pr_ls[:-1]) # lookback of one, use .6 for first play of drive (default pass rate)
+            epa_ls.append([.0] + list(np.cumsum(curr_epa_ls)/np.arange(1,len(curr_epa_ls)+1))[:-1]) # inelegantly impute an EPA of zero for our first timestep
+            
+            # reset current drive stat lists
+            curr_pr_ls = []
+            curr_clock_ls = []
+            curr_epa_ls = []
+            
+
+        # if not switching teams, update current drive's pass rate
+        if row['isDropback']:
+            pc+=1
+        pnum += 1
+        pr = pc/pnum
+
+        # get current mean clock used per drive
+        clock = row['playClockAtSnap']
+        epa = row['expectedPointsAdded']
+        
+        # update pass rate, play number, possession, etc. for current drive
+        pnum_ls.append(pnum)
+        flag_ls.append(flag)
+        curr_pr_ls.append(pr)
+        curr_clock_ls.append(clock)
+        curr_epa_ls.append(epa)
+
+    # if new drive not logged, append
+    if len(list(chain(*pr_ls))) < len(df_plays):
+        pr_ls.append([.6] + curr_pr_ls[:-1])
+    if len(list(chain(*clock_ls))) < len(df_plays):
+        clock_ls.append([10] + curr_clock_ls[:-1])
+    if len(list(chain(*epa_ls))) < len(df_plays):
+        epa_ls.append([0] + curr_epa_ls[:-1])
+
+    # flatten running lists using using iter chain
+    pr_flat = list(chain(*pr_ls))
+    clock_flat = list(chain(*clock_ls))
+    epa_flat = list(chain(*epa_ls))
+
+    # estalish new features
+    df_plays['drive_pass_rate'] = pr_flat
+    df_plays['mean_clocksnap'] = clock_flat
+
+    # define 'tempo'
+    df_plays['tempo'] = .1*df_plays['mean_clocksnap'] + df_plays['drive_pass_rate']
+    df_plays['tempo'] = df_plays['tempo']/df_plays['tempo'].max()

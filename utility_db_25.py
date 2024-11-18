@@ -619,3 +619,37 @@ def calc_tempo(df_plays):
     # define 'tempo'
     df_plays['tempo'] = .1*df_plays['mean_clocksnap'] + df_plays['drive_pass_rate'] - df_plays['mean_epa']
     df_plays['tempo'] = df_plays['tempo']/df_plays['tempo'].max()
+
+
+############################################
+#
+# function: count_box_bmi
+# purpose: incorporate bmi, box count features
+#
+############################################
+
+def count_box_bmi(data, df_players, df_player_play):
+    
+    # get box ct info
+    data.sort_values(by=['gameId','possessionTeam','playId'],inplace=True)
+    data['box_ewm_pre'] = data.groupby(['gameId','possessionTeam'])['n_defense_box'].transform(lambda x: x.ewm(alpha=.1).mean())
+    data['box_ewm'] = data.groupby(['gameId','possessionTeam']).box_ewm_pre.shift(1)
+    data['box_ewm'] = data['box_ewm'].fillna(6)
+
+    # calc height, bmi
+    df_players = pd.concat([df_players,df_players['height'].str.split('-',n=1,expand=True).rename(columns={0:'h_ft',1:'h_in_pre'})],axis=1)
+    df_players['height_inches'] = df_players['h_ft'].astype(int)*12 + df_players['h_in_pre'].astype(int)
+    df_players['bmi'] = df_players['weight'] /(df_players['height_inches']**2) # weight/height squared
+
+    # incorporate data back into player-play
+    df_bmi = df_player_play[['gameId','playId','nflId']].merge(df_players[['nflId','bmi','height_inches','weight','position']])
+
+    # get DL BMI, reintegrate
+    dl_df = df_bmi[df_bmi['position'].isin(['DT','NT','DE'])].groupby(['gameId','playId'])['bmi'].mean().reset_index().rename(columns={'bmi':'mean_DL_bmi'})
+  
+    # integrate into data
+    data = data.merge(dl_df,how='left')
+
+    # get final metric
+    data['box_ewm_dl_bmi'] = data['box_ewm']*data['mean_DL_bmi']
+    data.drop(columns=['mean_DL_bmi','box_ewm'])

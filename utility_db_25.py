@@ -542,6 +542,8 @@ def test_ML(test_data, model,final_features,transformer_impute,transformer_scale
 
 def calc_tempo(df_plays):
 
+    df_plays.sort_values(by=['gameId','playId'],inplace=True)
+    df_plays.reset_index(inplace=True)
     last_team = df_plays['possessionTeam'][0] # monitor what the last team updated was, implies switch if different
     pnum=0 # play number of drive
     pc = 0 # pass count
@@ -617,7 +619,7 @@ def calc_tempo(df_plays):
     df_plays['mean_epa'] = epa_flat
 
     # define 'tempo'
-    df_plays['tempo'] = .1*df_plays['mean_clocksnap'] + df_plays['drive_pass_rate'] - df_plays['mean_epa']
+    df_plays['tempo'] = (.1*df_plays['mean_clocksnap'] * df_plays['drive_pass_rate']) - df_plays['mean_epa']
     df_plays['tempo'] = df_plays['tempo']/df_plays['tempo'].max()
 
 
@@ -652,4 +654,119 @@ def count_box_bmi(data, df_players, df_player_play):
 
     # get final metric
     data['box_ewm_dl_bmi'] = data['box_ewm']*data['mean_DL_bmi']
-    data.drop(columns=['mean_DL_bmi','box_ewm'])
+    data.drop(columns=['mean_DL_bmi','box_ewm'],inplace=True)
+
+######################################################
+#
+# function: get_qb_rates
+# purpose: get historical, season-long qb pass rates
+#
+######################################################
+
+def get_qb_rates(df_play,df_player_play,df_players,df_games):
+
+    # import nflverse data
+    pfr_szn = nfl.import_seasonal_pfr('pass',[2021])
+    isr = nfl.import_seasonal_rosters(years=[2021],columns=['player_id','pfr_id','gsis_it_id']).drop_duplicates()
+    snap_df = nfl.import_snap_counts([2021])
+
+    # get '21 nflverse snap data, merge into pfr pass info
+    snap_szn = snap_df.groupby('pfr_player_id')['offense_snaps'].sum().reset_index()
+    pfr_sub = pfr_szn[['pfr_id','pa_pass_att','pa_pass_yards','pass_attempts']].merge(snap_szn,how='left',left_on='pfr_id',right_on='pfr_player_id').drop(columns=['pfr_player_id'])
+
+    # calculate PA, overall pass rates for '21
+    pfr_sub['qb_pa_rate_pass'] = pfr_sub['pa_pass_att']/pfr_sub['pass_attempts']
+    pfr_sub['qb_pa_rate_ovr'] = pfr_sub['pa_pass_att']/pfr_sub['offense_snaps']
+    pfr_sub['qb_pass_rate'] = pfr_sub['pass_attempts']/pfr_sub['offense_snaps']
+    
+    # pa_pass att = arbitrary column, same amt of na's for all features
+    pfr_id_rect = isr.merge(pfr_sub,how='left').dropna(subset='pa_pass_att').drop(columns=['player_id','pfr_id'])
+    pfr_id_rect = pfr_id_rect[pfr_id_rect['pass_attempts'] >= 20]
+    
+    # bring in position, PA and pass flags
+    df_pos = df_player_play[['gameId','playId','nflId']].merge(df_players[['nflId','position']],how='left')
+    df_comp = df_pos.merge(df_play[['gameId','playId','playAction','isDropback']])
+    df_comp = df_comp[~df_comp.nflId.isin([45244,54551])]
+
+    # group QB passing data to game level, add explicit week info
+    qb_grp = df_comp[df_comp.position=='QB'].groupby(['gameId','nflId']).agg(pa_ct_game=('playAction','sum'),snap_ct=('playAction','count'),pass_ct=('isDropback','sum')).reset_index()
+    qb_trunc = qb_grp.merge(df_games[['gameId','week']].drop_duplicates(),how='left').sort_values(by=['nflId','week'])
+
+    # get current-year (2022) pass ratios
+    qb_trunc['qb_pass_rate'] = qb_trunc['pass_ct']/qb_trunc['snap_ct']
+    qb_trunc['qb_pa_rate_ovr'] = qb_trunc['pa_ct_game']/qb_trunc['snap_ct']
+    qb_trunc['qb_pa_rate_pass'] = qb_trunc['pa_ct_game']/qb_trunc['pass_ct']
+    qb_trunc['week'] = qb_trunc['week'].astype(int)
+
+    # adjust ID typing
+    pfr_id_rect.rename(columns={'gsis_it_id':'nflId'},inplace=True)
+    pfr_id_rect['nflId'] = pfr_id_rect['nflId'].astype(str)
+    qb_trunc['nflId'] = qb_trunc['nflId'].astype(str)
+
+    # set '21 data as week 1, uptick other weeks
+    pfr_id_rect['week']=1
+    qb_trunc['week']+=1
+
+    # stack '21 (our proxy week 1) and '22 (week 2-9) data
+    reduce_cols = ['nflId','week','qb_pass_rate','qb_pa_rate_ovr','qb_pa_rate_pass']
+    qb_w_21 = pd.concat([pfr_id_rect[reduce_cols],qb_trunc[reduce_cols]],axis=0)
+
+    # get cumulative sum for each feature
+    mean_cols = ['qb_pass_rate','qb_pa_rate_ovr','qb_pa_rate_pass']
+    qb_w_21.sort_values(by=['nflId','week'],inplace=True)
+    qb_full = pd.concat([qb_w_21[['nflId','week']],qb_w_21.groupby(['nflId'])[mean_cols].cumsum()],axis=1)
+    qb_full = pd.concat([qb_full,qb_full.groupby(['nflId']).agg(qb_week=('week','cumcount'))],axis=1)
+    qb_full['qb_week']+=1 # num. start of qb's season; default start ind 0, so bump by 1
+
+    # get average by dividing by week num.
+    for col in mean_cols: 
+        qb_full[col] = qb_full[col].values/qb_full['qb_week'].values
+
+    qb_full.drop(columns=['qb_week'],inplace=True)
+
+    # get EWM pass rate
+    ewm_temp = qb_w_21.copy()
+    for col in mean_cols:
+        ewm_temp[col+'_ewm'] = ewm_temp.groupby(['nflId'])[col].transform(lambda x: x.ewm(alpha=.1).mean())
+        ewm_temp.drop(columns=[col],inplace=True)
+
+    # get all-week info with cartesian product
+    qb_full = qb_full.merge(ewm_temp,how='left',on=['nflId','week'])
+    ci = pd.merge(qb_trunc['nflId'].drop_duplicates(), pd.Series(list(range(1,10))).rename('week'), how='cross',copy=False).sort_values(by=['nflId','week'])
+    qb_aw = ci.merge(qb_full,how='left')
+    qb_ffill_pre = pd.concat([qb_aw['nflId'],qb_aw.groupby('nflId').ffill()],axis=1)
+
+    # fix div. 0 issue
+    qb_ffill_pre.loc[qb_ffill_pre['qb_pass_rate'] == 0,'qb_pa_rate_ovr'] = 0
+    qb_ffill_pre.loc[qb_ffill_pre['qb_pass_rate'] == 0,'qb_pa_rate_pass'] = 0
+
+    # fill rest w/base rates
+    qb_ffill_pre['qb_pass_rate'] = qb_ffill_pre['qb_pass_rate'].fillna(.54)
+    qb_ffill_pre['qb_pa_rate_ovr'] = qb_ffill_pre['qb_pa_rate_ovr'].fillna(.13)
+    qb_ffill_pre['qb_pa_rate_pass'] = qb_ffill_pre['qb_pa_rate_pass'].fillna(.24)
+    qb_ffill_pre['qb_pass_rate_ewm'] = qb_ffill_pre['qb_pass_rate_ewm'].fillna(.54)
+    qb_ffill_pre['qb_pa_rate_ovr_ewm'] = qb_ffill_pre['qb_pa_rate_ovr_ewm'].fillna(.13)
+    qb_ffill_pre['qb_pa_rate_pass_ewm'] = qb_ffill_pre['qb_pa_rate_pass_ewm'].fillna(.24)
+
+    # reintegrate data
+    qb_wk = df_comp[df_comp.position=='QB'].merge(df_games[['gameId','week']].drop_duplicates(),how='left')[['gameId','playId','nflId','week']]
+    qb_ffill_pre['nflId'] = qb_ffill_pre['nflId'].astype(int)
+    rate_df = qb_wk.merge(qb_ffill_pre,how='left')
+    return rate_df.drop(columns=['nflId','week','qb_pa_rate_ovr','qb_pass_rate','qb_pa_rate_ovr_ewm','qb_pa_rate_pass_ewm'])
+
+##########################################################
+#
+# function: get_game_pressure
+# purpose: get pressure rate faced for game/team combos
+#
+######################################################
+
+def get_game_pressure(df_play,df_player_play):
+
+    df_pp_cp = df_player_play.groupby(['gameId','playId']).agg(pressure_play=('causedPressure','any')).reset_index()
+    df_play = df_play.merge(df_pp_cp,how='left')
+    df_play.sort_values(by=['gameId','possessionTeam','playId'],inplace=True)
+    df_play['pressure_ewm_pre'] = df_play.groupby(['gameId','possessionTeam'])['pressure_play'].transform(lambda x: x.ewm(alpha=.1).mean())
+    df_play['pressure_ewm'] = df_play.groupby(['gameId','possessionTeam']).pressure_ewm_pre.shift(1)
+    df_play['pressure_ewm'] = df_play['pressure_ewm'].fillna(.19)
+    return(df_play)

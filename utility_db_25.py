@@ -655,6 +655,8 @@ def count_box_bmi(data, df_players, df_player_play):
     # get final metric
     data['box_ewm_dl_bmi'] = data['box_ewm']*data['mean_DL_bmi']
     data.drop(columns=['mean_DL_bmi','box_ewm'],inplace=True)
+    
+    return data
 
 ######################################################
 #

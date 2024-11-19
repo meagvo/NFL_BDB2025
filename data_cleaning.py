@@ -36,6 +36,7 @@ def feature_engineering(df_plays):
     #features for plays df 
     df_plays['time_remaining'] = df_plays['quarter'].map({1: 45, 2: 30, 3: 15, 4: 0, 5:0}) +                                df_plays['gameClock'].apply(lambda x: int(x.split(':')[0]) + int(x.split(':')[1])/60)
     df_plays['score_differential'] = df_plays['preSnapHomeScore'] - df_plays['preSnapVisitorScore']
+    calc_tempo(df_plays)
     return df_plays
 def get_position_count(df):
     df['pos_count']=(df[['gameId', 'playId', 'position', 'nflId']].drop_duplicates().sort_values(by=['gameId', 'playId', 'position']).groupby(by=['gameId', 'playId', 'position']).cumcount()+1)

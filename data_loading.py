@@ -56,12 +56,17 @@ def load_tracking_data(tracking_fname: str):
 
 def aggregate_data(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname, qbr_fname, def_fname, agg_flag):
     # Route to whether we want test or train data
+
+    ### TODO ### 
+    # integrate this stuff one-by-one:
+    df_plays = feature_engineering(pd.read_csv(plays_fname))
+    #calc_tempo
     if agg_flag == 'train':
-        return aggregate_train(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname, qbr_fname, def_fname)
+        return aggregate_train(df_plays, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname, qbr_fname, def_fname)
     elif agg_flag == 'test':
-        return aggregate_test(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, qbr_fname, def_fname)
+        return aggregate_test(df_plays, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, qbr_fname, def_fname)
     
-def aggregate_test(plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, qbr_fname, def_fname):
+def aggregate_test(df_plays, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, qbr_fname, def_fname):
     """
     Create the aggregate dataframe by merging together the plays data and tracking data
 
@@ -78,7 +83,7 @@ def aggregate_test(plays_fname, player_plays_fname, players_fname, tracking_fnam
  
     df_games=pd.merge(df_games, load_stadium_data(),left_on='gameId', right_on='old_game_id', how='left')
     df_games=pd.merge(df_games, load_weather_data(),on='gameId', how='left')
-    df_plays = feature_engineering(pd.read_csv(plays_fname))
+    
     
     df_tracking = pd.concat(
         [load_tracking_data(tracking_fname) for tracking_fname in tracking_fname_list]
@@ -142,11 +147,12 @@ def aggregate_test(plays_fname, player_plays_fname, players_fname, tracking_fnam
     def_df['playId'] = def_df['playId'].astype(int)
     merged_base = merged_base.merge(def_df,how='left',left_on=['gameId','playId'], right_on=['gameId','playId'])
 
-    
+    # integrate tempo data
+    merged_base = merged_base.merge(df_plays[['gameId','playId','tempo']],how='left',left_on=['gameId','playId'], right_on=['gameId','playId'])
 
     return pd.concat([df_final,merged_base.iloc[:,2:]],axis=1)
 
-def aggregate_train(  plays_fname, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname, qbr_fname, def_fname):
+def aggregate_train( df_plays, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname, qbr_fname, def_fname):
     """
     Create the aggregate dataframe by merging together the plays data and tracking data
 
@@ -163,7 +169,7 @@ def aggregate_train(  plays_fname, player_plays_fname, players_fname, tracking_f
     
     df_games=pd.merge(df_games, load_stadium_data(),left_on='gameId', right_on='old_game_id', how='left')
     df_games=pd.merge(df_games, load_weather_data(),on='gameId', how='left')
-    df_plays = feature_engineering(pd.read_csv(plays_fname))
+    
     df_tracking = pd.concat(
         [load_tracking_data(tracking_fname) for tracking_fname in tracking_fname_list]
     )
@@ -277,5 +283,7 @@ def aggregate_train(  plays_fname, player_plays_fname, players_fname, tracking_f
     def_df['playId'] = def_df['playId'].astype(int)
     merged_base = merged_base.merge(def_df,how='left',left_on=['gameId','playId'], right_on=['gameId','playId'])
 
-    
+    # add tempo
+    merged_base = merged_base.merge(df_plays[['gameId','playId','tempo']],how='left',left_on=['gameId','playId'], right_on=['gameId','playId'])
+
     return pd.concat([df_final,merged_base.iloc[:,2:]],axis=1)

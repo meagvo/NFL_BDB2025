@@ -31,15 +31,15 @@ def load_previous_year_data(year: int):
 def load_ftn():
     pbp = nfl.import_pbp_data([2022])
     ftn = nfl.import_ftn_data([2022])
-    pbp_ids = pbp[['play_id','game_id','old_game_id_x']]
+    pbp_ids = pbp[['play_id','game_id','old_game_id_x']].copy()
     ftn['nflverse_play_id'] = ftn['nflverse_play_id'].astype(int)
     pbp_ids['play_id'] = pbp_ids['play_id'].astype(int)
     ftn['nflverse_game_id'] = ftn['nflverse_game_id'].astype(str)
     pbp_ids['game_id'] = pbp_ids['game_id'].astype(str)
-    ftn_merged = pbp_ids.merge(ftn,how='left',left_on=['play_id','game_id'],
+    ftn_merged_pre = pbp_ids.merge(ftn,how='left',left_on=['play_id','game_id'],
                 right_on=['nflverse_play_id','nflverse_game_id'])
-    ftn_merged = ftn_merged[['play_id','old_game_id_x','n_offense_backfield',
-                            'n_defense_box','is_no_huddle','is_motion']].rename(columns={'old_game_id_x':'gameId',
+    ftn_merged = ftn_merged_pre[['play_id','old_game_id_x','n_offense_backfield',
+                            'n_defense_box','is_no_huddle','is_motion']].copy().rename(columns={'old_game_id_x':'gameId',
                                                                                        'play_id':'playId'})
     ftn_merged['gameId'] = ftn_merged['gameId'].astype(int)
     ftn_merged['playId'] = ftn_merged['playId'].astype(int)
@@ -59,14 +59,17 @@ def aggregate_data(plays_fname, player_plays_fname, players_fname, tracking_fnam
 
     ### TODO ### 
     # integrate this stuff one-by-one:
+    df_players = pd.read_csv(players_fname)
+    df_player_plays = pd.read_csv(player_plays_fname)
     df_plays = feature_engineering(pd.read_csv(plays_fname))
+    df_plays = count_box_bmi(df_plays,df_players,df_player_plays)
     #calc_tempo
     if agg_flag == 'train':
-        return aggregate_train(df_plays, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname, qbr_fname, def_fname)
+        return aggregate_train(df_plays, df_player_plays, df_players, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname, qbr_fname, def_fname)
     elif agg_flag == 'test':
-        return aggregate_test(df_plays, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, qbr_fname, def_fname)
+        return aggregate_test(df_plays, df_player_plays, df_players, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, qbr_fname, def_fname)
     
-def aggregate_test(df_plays, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, qbr_fname, def_fname):
+def aggregate_test(df_plays, df_player_plays, df_players, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, qbr_fname, def_fname):
     """
     Create the aggregate dataframe by merging together the plays data and tracking data
 
@@ -91,9 +94,7 @@ def aggregate_test(df_plays, player_plays_fname, players_fname, tracking_fname_l
     df_tracking=df_tracking[['gameId', 'playId', 'nflId','club' ,'o_standard', 'dir_standard', 'x_standard', 'y_standard', 's', 'a', 'dis']].groupby(['gameId', 'playId', 'nflId','club']).agg({'s':[ 'max',],'a':[ 'max'], 
     'o_standard':['mean', 'std'],'dis':['sum'],'dir_standard':['mean', 'std'], 'x_standard':['mean', 'std'], 'y_standard':['mean', 'std']}).reset_index()
     df_tracking.columns=df_tracking.columns.map('|'.join).str.strip('|')
-    df_players = pd.read_csv(players_fname)
     df_players.loc[df_players['nflId'] ==45244, 'position'] = 'TE' #update data for Taysom Hill
-    df_player_plays=pd.read_csv(player_plays_fname)
     df_player_plays=pd.merge(df_player_plays, load_previous_year_data(2021), left_on='teamAbbr', right_on='team_abbr', how='outer')
     # aggregate plays, tracking, players tables
     df_agg1=pd.merge(pd.merge(df_tracking, df_plays, left_on=[ 'gameId', 'playId','club'], right_on=[ 'gameId', 'playId', 'possessionTeam'], how='inner'), df_player_plays, left_on=[ 'gameId', 'playId', 'nflId'], right_on=[ 'gameId', 'playId', 'nflId'], how='left' )
@@ -147,12 +148,12 @@ def aggregate_test(df_plays, player_plays_fname, players_fname, tracking_fname_l
     def_df['playId'] = def_df['playId'].astype(int)
     merged_base = merged_base.merge(def_df,how='left',left_on=['gameId','playId'], right_on=['gameId','playId'])
 
-    # integrate tempo data
-    merged_base = merged_base.merge(df_plays[['gameId','playId','tempo']],how='left',left_on=['gameId','playId'], right_on=['gameId','playId'])
+    # integrate tempo, bmi/box data
+    merged_base = merged_base.merge(df_plays[['gameId','playId','tempo','box_ewm_dl_bmi']],how='left',left_on=['gameId','playId'], right_on=['gameId','playId'])
 
     return pd.concat([df_final,merged_base.iloc[:,2:]],axis=1)
 
-def aggregate_train( df_plays, player_plays_fname, players_fname, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname, qbr_fname, def_fname):
+def aggregate_train( df_plays, df_player_plays, df_players, tracking_fname_list, games_fname, xp_fname, pr_fname, cu_fname, inj_fname, c21_fname, pr21_fname, qbr_fname, def_fname):
     """
     Create the aggregate dataframe by merging together the plays data and tracking data
 
@@ -176,9 +177,7 @@ def aggregate_train( df_plays, player_plays_fname, players_fname, tracking_fname
     df_tracking=df_tracking[['gameId', 'playId', 'nflId','club' ,'o_standard', 'dir_standard', 'x_standard', 'y_standard', 's', 'a', 'dis']].groupby(['gameId', 'playId', 'nflId','club']).agg({'s':[ 'max',],'a':[ 'max'], 
     'o_standard':['mean', 'std'],'dis':['sum'],'dir_standard':['mean', 'std'], 'x_standard':['mean', 'std'], 'y_standard':['mean', 'std']}).reset_index()
     df_tracking.columns=df_tracking.columns.map('|'.join).str.strip('|')
-    df_players = pd.read_csv(players_fname)
     df_players.loc[df_players['nflId'] ==45244, 'position'] = 'TE' #update data for Taysom Hill
-    df_player_plays=pd.read_csv(player_plays_fname)
     df_player_plays=pd.merge(df_player_plays, load_previous_year_data(2021), left_on='teamAbbr', right_on='team_abbr', how='outer')
     # aggregate plays, tracking, players tables
     df_agg1=pd.merge(pd.merge(df_tracking, df_plays, left_on=[ 'gameId', 'playId','club'], right_on=[ 'gameId', 'playId', 'possessionTeam'], how='inner'), df_player_plays, left_on=[ 'gameId', 'playId', 'nflId'], right_on=[ 'gameId', 'playId', 'nflId'], how='left' )
@@ -283,7 +282,46 @@ def aggregate_train( df_plays, player_plays_fname, players_fname, tracking_fname
     def_df['playId'] = def_df['playId'].astype(int)
     merged_base = merged_base.merge(def_df,how='left',left_on=['gameId','playId'], right_on=['gameId','playId'])
 
-    # add tempo
-    merged_base = merged_base.merge(df_plays[['gameId','playId','tempo']],how='left',left_on=['gameId','playId'], right_on=['gameId','playId'])
+    # add tempo, bmi/box data
+    merged_base = merged_base.merge(df_plays[['gameId','playId','tempo','box_ewm_dl_bmi']],how='left',left_on=['gameId','playId'], right_on=['gameId','playId'])
 
     return pd.concat([df_final,merged_base.iloc[:,2:]],axis=1)
+
+############################################
+#
+# function: count_box_bmi
+# purpose: incorporate bmi, box count features
+#
+############################################
+
+def count_box_bmi(df_play, df_players, df_player_play):
+    
+    # add box count from ftn
+    ftn_df = load_ftn()
+    df_play = df_play.merge(ftn_df[['gameId','playId','n_defense_box']],how='left')
+    
+    # get box ct info
+    df_play['box_ewm_pre'] = df_play.groupby(['gameId','possessionTeam'])['n_defense_box'].transform(lambda x: x.ewm(alpha=.1).mean())
+    df_play['box_ewm'] = df_play.groupby(['gameId','possessionTeam']).box_ewm_pre.shift(1)
+    df_play['box_ewm'] = df_play['box_ewm'].fillna(6)
+    df_play[['gameId','playId','possessionTeam','n_defense_box','box_ewm']].head(6)
+
+    # calc height, bmi
+    df_players = pd.concat([df_players,df_players['height'].str.split('-',n=1,expand=True).rename(columns={0:'h_ft',1:'h_in_pre'})],axis=1)
+    df_players['height_inches'] = df_players['h_ft'].astype(int)*12 + df_players['h_in_pre'].astype(int)
+    df_players['bmi'] = df_players['weight'] /(df_players['height_inches']**2) # weight/height squared
+
+    # incorporate data back into player-play
+    df_bmi = df_player_play[['gameId','playId','nflId']].merge(df_players[['nflId','bmi','height_inches','weight','position']])
+
+    # get DL BMI, reintegrate
+    dl_df = df_bmi[df_bmi['position'].isin(['DT','NT','DE'])].groupby(['gameId','playId'])['bmi'].mean().reset_index().rename(columns={'bmi':'mean_DL_bmi'})
+  
+    # integrate into data
+    df_play = df_play.merge(dl_df,how='left')
+
+    # get final metric
+    df_play['box_ewm_dl_bmi'] = df_play['box_ewm']*df_play['mean_DL_bmi']
+    df_play.drop(columns=['mean_DL_bmi','box_ewm','n_defense_box'],inplace=True)
+    
+    return df_play

@@ -545,10 +545,9 @@ def calc_tempo(df_plays):
     df_plays.sort_values(by=['gameId','playId'],inplace=True)
     df_plays.reset_index(inplace=True)
     last_team = df_plays['possessionTeam'][0] # monitor what the last team updated was, implies switch if different
+    last_game = df_plays['gameId'][0] # if game switched, we're likely on a new drive
     pnum=0 # play number of drive
     pc = 0 # pass count
-    pnum_ls = [] # play number list
-    flag_ls = [] # switch flag list
     curr_pr_ls = [] # pass rate for current drive
     pr_ls = [] # overall pass_rate ls
     curr_clock_ls = [] # play clock for run
@@ -560,17 +559,19 @@ def calc_tempo(df_plays):
     for index, row in df_plays.iterrows():
 
         curr_team = row['possessionTeam']
-        flag = 0
+        curr_game = row['gameId']
 
         # if we've switched teams, reset drive tracking info/add last drive's info to running list
-        if last_team != curr_team:
+        if (last_team != curr_team) | (last_game != curr_game):
 
             # reset pass count, play number for drive
 
             last_team = curr_team # reset team to know we're on current drive now
             pc = 0 # reset pass count, etc.
             pnum = 0
-            flag = 1
+
+            if last_game != curr_game:
+                last_game = curr_game
 
             # append current clock, epa, pass rate stats to running lists
             clock_ls.append([10] + list(np.cumsum(curr_clock_ls)/np.arange(1,len(curr_clock_ls)+1))[:-1]) # assume 10 seconds left on play clock, can adjust later
@@ -583,7 +584,7 @@ def calc_tempo(df_plays):
             curr_epa_ls = []
             
 
-        # if not switching teams, update current drive's pass rate
+        # update current drive's pass rate
         if row['isDropback']:
             pc+=1
         pnum += 1
@@ -594,8 +595,6 @@ def calc_tempo(df_plays):
         epa = row['expectedPointsAdded']
         
         # update pass rate, play number, possession, etc. for current drive
-        pnum_ls.append(pnum)
-        flag_ls.append(flag)
         curr_pr_ls.append(pr)
         curr_clock_ls.append(clock)
         curr_epa_ls.append(epa)

@@ -70,3 +70,64 @@ def graph_run_pass():
     plt.title("2021 NFL Season - Pass Attempts vs. Rush Attempts", fontdict={'fontsize':35});
     plt.xlabel("Pass Attempts", fontdict={'fontsize':21});
     plt.ylabel("Rush Attempts", fontdict={'fontsize':21});
+
+
+#################################################################
+#
+#   function: get_partial_pass_rates
+#   purpose: get pass rates for a year, windowed to max_week
+#
+################################################################
+
+def get_partial_pass_rates(year: int, max_week: int):
+    
+    # pull year, week selection
+    df_rush_pre = nfl.import_ngs_data(stat_type='rushing', years=[year])
+    df_pass_pre = nfl.import_ngs_data(stat_type='passing', years=[year])
+    rush_sub = df_rush_pre[(df_rush_pre['week'] > 0) & (df_rush_pre['week'] <= max_week)]
+    pass_sub = df_pass_pre[(df_pass_pre['week'] > 0) & (df_pass_pre['week'] <= max_week)]
+
+    # get aggregate stats
+    df_rush = rush_sub[['team_abbr', 'rush_attempts']].groupby('team_abbr').sum().reset_index()
+    df_pass = pass_sub[['team_abbr', 'attempts']].groupby('team_abbr').sum().reset_index()
+    df_pass_ratio=df_rush.merge(df_pass, on='team_abbr', how='left')
+    df_pass_ratio['pass_ratio']=np.round((df_pass_ratio['attempts']/(df_pass_ratio['rush_attempts']+df_pass_ratio['attempts'])), 2)
+    
+    return df_pass_ratio
+
+#################################################################
+#
+#   function: get_median_feature
+#   purpose: get team-based median for chosen feature
+#
+################################################################
+
+def get_median_feature(data,feature):
+    data_sub = data[['possessionTeam',feature]].copy().rename(columns={'LA':'LAC'})
+    med_feat = data_sub.groupby('possessionTeam')[feature].median().reset_index()
+    return med_feat
+
+#################################################################
+#
+#   function: ggraph_feature_rate
+#   purpose: plot chosen feature against pass rate for team so far
+#
+################################################################
+
+def graph_feature_rate(year,max_week,feature,data):
+    pr_cy = get_partial_pass_rates(year, max_week)
+    med_feat = get_median_feature(data,feature)
+    pre_logo_df = pr_cy.merge(med_feat,left_on='team_abbr',right_on='possessionTeam',how='left')
+    df=pd.merge(pre_logo_df, get_logo_df(), on='team_abbr', how='left')
+        # Define plot size and autolayout
+    fig, ax = plt.subplots(figsize=(20, 14), dpi=120)
+    ax.scatter(df[feature],df['pass_ratio'], color='white')
+
+    for index, row in df.iterrows():
+        ab = AnnotationBbox(getImage(row['Logo Path']), (row[feature],row['pass_ratio']), frameon=False)
+        ax.add_artist(ab)
+
+    for i in range(len(df)):
+        plt.title(f"Pass Rate vs. {feature} ({year} through week {max_week})", fontdict={'fontsize':35});
+        plt.xlabel(feature, fontdict={'fontsize':21});
+        plt.ylabel("Pass Ratio", fontdict={'fontsize':21});

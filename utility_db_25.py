@@ -323,13 +323,17 @@ def get_final_features(train_data,threshold,trim_rows):
 
 def get_momentum_cols(final_features):
     momentum_cols=[]
+    rb_cols=[]
     for f in final_features:
         if 'shiftSinceLineset' in f and 'RB' not in f:
             momentum_cols.append(f)
-    return momentum_cols
-def create_momentum_index(data, momentum_cols):
-    data['presnap_momentum']=data[momentum_cols].sum(axis=1).fillna(0).astype(float)
+        elif 'shiftSinceLineset' in f and 'RB' in f:
+            rb_cols.append(f)
+    return momentum_cols, rb_cols
+def create_momentum_index(data, momentum_cols, rb_cols):
+    data['presnap_momentum']=data[momentum_cols].sum(axis=1).fillna(0).astype(float)-data[rb_cols].sum(axis=1).fillna(0).astype(float)
     data.drop(columns=momentum_cols, inplace=True)
+    data.drop(columns=rb_cols, inplace=True)
     return data
 
 
@@ -343,11 +347,15 @@ def create_momentum_index(data, momentum_cols):
 
 def get_motion_cols(final_features):
     motion_cols=[]
+    rb_motion_cols=[]
+
     for f in final_features:
         if 'motionSinceLineset' in f and 'RB' not in f:
             motion_cols.append(f)
-    return motion_cols
-def motion_complexity_score(data, motion_cols):
+        elif 'motionSinceLineset' in f and 'RB' in f:
+            rb_motion_cols.append(f)
+    return motion_cols, rb_motion_cols
+def motion_complexity_score(data, motion_cols, rb_motion_cols):
     dir_cols=['dir_standard|mean|C_1',
     'dir_standard|mean|C_2',
     'dir_standard|mean|FB_1',
@@ -429,7 +437,7 @@ def motion_complexity_score(data, motion_cols):
     data['QBdffy_G']=data[['y_standard|mean|G_1_QBdiff','y_standard|mean|G_2_QBdiff','y_standard|mean|G_3_QBdiff']].mean(axis=1).astype(float)
     data['QBdffy_T']=data[['y_standard|mean|T_1_QBdiff','y_standard|mean|T_2_QBdiff','y_standard|mean|T_3_QBdiff', 'y_standard|mean|T_4_QBdiff']].mean(axis=1).astype(float)
     data['QBdffy_WR']=data[['y_standard|mean|WR_1_QBdiff','y_standard|mean|WR_2_QBdiff','y_standard|mean|WR_3_QBdiff', 'y_standard|mean|WR_4_QBdiff', 'y_standard|mean|WR_5_QBdiff']].mean(axis=1).astype(float)
-    data['presnap_motion_complexity']=data[motion_cols].sum(axis=1).fillna(0).astype(float)
+    data['presnap_motion_complexity']=data[motion_cols].sum(axis=1).fillna(0).astype(float)-data[rb_motion_cols].sum(axis=1).fillna(0).astype(float)
     data['motion-momentum']= (data['presnap_motion_complexity']-data['presnap_momentum']).astype(float) #how many more people moved compared to how many shifted (over 2.5 yards)
     data['neg_Formations']=data[['offenseFormation_SINGLEBACK' ,'offenseFormation_I_FORM', 'offenseFormation_PISTOL']].sum(axis=1).astype(int)
     data['neg_alignment']=data[['receiverAlignment_1x1', 'receiverAlignment_2x1']].sum(axis=1).astype(int)

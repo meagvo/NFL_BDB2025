@@ -114,13 +114,13 @@ def get_median_feature(data,feature):
 #
 ################################################################
 
-def graph_feature_rate(year,max_week,feature,data):
+def graph_feature_rate(year,max_week,feature,data,feat_title=None):
     pr_cy = get_partial_pass_rates(year, max_week)
     med_feat = get_median_feature(data,feature)
     pre_logo_df = pr_cy.merge(med_feat,left_on='team_abbr',right_on='possessionTeam',how='left')
     df=pd.merge(pre_logo_df, get_logo_df(), on='team_abbr', how='left')
         # Define plot size and autolayout
-    fig, ax = plt.subplots(figsize=(20, 14), dpi=120)
+    fig, ax = plt.subplots(figsize=(11, 7),dpi=120)
     ax.scatter(df[feature],df['pass_ratio'], color='white')
 
     for index, row in df.iterrows():
@@ -128,6 +128,9 @@ def graph_feature_rate(year,max_week,feature,data):
         ax.add_artist(ab)
 
     for i in range(len(df)):
-        plt.title(f"Pass Rate vs. {feature} ({year} through week {max_week})", fontdict={'fontsize':35});
-        plt.xlabel(feature, fontdict={'fontsize':21});
-        plt.ylabel("Pass Ratio", fontdict={'fontsize':21});
+        if feat_title:
+            plt.title(feat_title, fontdict={'fontsize':19});
+        else:
+            plt.title(f"Pass Rate vs. {feature} ({year} through week {max_week})", fontdict={'fontsize':19});
+        plt.xlabel(feature, fontdict={'fontsize':15});
+        plt.ylabel("Pass Ratio", fontdict={'fontsize':15});

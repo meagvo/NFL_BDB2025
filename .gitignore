@@ -6,3 +6,7 @@ catboost_info/
 data_agg_full_run_oct29_24.ipynb
 unpack_xpass.ipynb
 deprecated_notebooks/
+id_lookup_dec_4.ipynb
+dot_example_pred_engineering_dec_5.ipynb
+lgbm.sav
+wordcount_nonsense.ipynb

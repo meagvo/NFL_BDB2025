@@ -14,3 +14,5 @@
 !box_bmi_pressure.csv
 !def_maxima.csv
 !motion_y_delta.csv
+!top_2_player_diff_last_10.csv
+!top_2_player_diff_last_15.csv

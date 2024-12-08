@@ -7528,11 +7528,11 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h1 id="I.-Introduction">I. Introduction<a class="anchor-link" href="#I.-Introduction">¶</a></h1><p>This submission aims to build a better methodology for predicting, pre-snap, whether a team will pass the ball. To do this, we created the <strong>Run-Pass Oracle</strong> model, built on top of a LightGBM architecture. We managed to achieve performance that surpasses state-of-the-art literature, while still maintaining interpretability.</p>
-<p>Much of this performance is driven by feature engineering, including metrics to track pre-snap factors such as <strong>Motion Intentionality</strong>, <strong>Defensive Congestion</strong>, and <strong>Contextualized Tempo</strong>. These features heavily utilize the provided tracking data, and resultingly show a big boost over extant models, many of which barely eclipse 70% accuracy, those that do coming with major caveats. Perhaps most notable among thesse is Ben Baldwin's expected pass <a href="https://opensourcefootball.com/posts/2020-09-28-nflfastr-ep-wp-and-cp-models/">model</a>; however, as the graphic below demonstrates, its predictions are still noisy:</p>
+<p>Much of this performance is driven by feature engineering, including metrics to track pre-snap factors such as <strong>Rectified Motion Value (RMV)</strong>, <strong>Defensive Congestion Index (DCI)</strong>, and <strong>Tempo Including Contextual Knowledge (TICK)</strong>. These features heavily utilize the provided tracking data, and show a big boost over extant models, many of which barely eclipse 70% accuracy (those that do coming with major caveats). Perhaps most notable among thesse is Ben Baldwin's expected pass <a href="https://opensourcefootball.com/posts/2020-09-28-nflfastr-ep-wp-and-cp-models/">model</a>; however, as the graphic below demonstrates, its predictions are still noisy:</p>
 <div>
 <center><img alt="No description has been provided for this image" height="400" src="image/pass_rate_thru_w7.png" width="600"/></center>
 </div>
-<p>Baldwin's model encompasses important context like down and distance, and knows a little about team strength due to using Vegas odds. However, it doesn't incorporate the rich tracking data utilized in our model, and also misses significantly on teams like the Chiefs and Bills, whose superstart QB's make them far more pass-happy than expected. By incorporating tracking data, as well as other contextual metrics, our model shows nearly a ten-percent boost over earlier literature in both a test and validation set, providing hope for generalizibility while still demonstrating immediate usefulness.</p>
+<p>Baldwin's model includes important context like down and distance, and knows a little about team strength due to using Vegas odds. However, it doesn't incorporate the rich tracking data utilized in our model, and also misses significantly on teams like the Chiefs and Bills, whose superstar QB's make them far more pass-happy than expected. By incorporating tracking data, our model gets nearly a ten-percent boost over earlier literature on both our test and validation sets, providing hope for generalizibility, while still demonstrating immediate usefulness.</p>
 </div>
 </div>
 </div>
@@ -7554,17 +7554,19 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="a)-Feature-overview">a) Feature overview<a class="anchor-link" href="#a)-Feature-overview">¶</a></h3><p>Our model encompasses six features, many of which aggregate less-important features into more informative metrics:</p>
+<h3 id="a)-Feature-overview">a) Feature overview<a class="anchor-link" href="#a)-Feature-overview">¶</a></h3><p>Our model encompasses seven features, many of which aggregate less-important features into more informative metrics:</p>
 <ul>
-<li><p><strong>Situational Expected Pass Rate</strong> draws <a href="https://opensourcefootball.com/posts/2020-09-28-nflfastr-ep-wp-and-cp-models/">Ben Baldwin's pass rate model</a>. While it is the dominant feature in our model, encompassing many other important features, it still is only at about 70% accuracy on its own, and fails to explicitly encompass tracking data &amp; other player info.</p>
+<li><p><strong>Situational xPass</strong>: An application of <a href="https://opensourcefootball.com/posts/2020-09-28-nflfastr-ep-wp-and-cp-models/">Ben Baldwin's pass rate model</a>. While it is the dominant feature in our model, aggregating many important features, it still acheives only 70% accuracy on its own, and doesn't utilize tracking data.</p>
 </li>
-<li><p><strong>Motion Favorability</strong>: The delta between number of players in motion post-lineset and the number of players who shifted. (TODO: Do we exclude RB2? Is that worth a small performance dent to snazz up the model?) While this seems fairly simple, it is by far the most informative approach we have found to incorporating motion into our model. (todo: display failed approaches?) This is because it is more important to know how many players are in motion (todo: break out a chart with multiple in motion vs. single vs. none?) vs. other stats like acceleration or distance covered. Similarly, since motion generally implies passing, and simple shifts imply runs, if both occur on the same play, then getting the delta between them concisely informs our prediction.</p>
+<li><p><strong>Rectified Motion Value (RMV)</strong>: Number of players in motion post-lineset, minus the number of players who shifted. Though seemingly simple, it is by far the most performative way of incorporating motion into our model we've found (see part d of this section for more)</p>
 </li>
-<li><p><strong>neg_Formations</strong> Captures which formations negatively impact pass rate. (TODO: cite which)</p>
+<li><p><strong>Run Formation Flag</strong>: Captures which formations negatively impact pass rate, such as I-formation (see part c of this section)</p>
 </li>
-<li><p><strong>TICK</strong>, or more verbosely, <strong>Tempo Including Contextual Knowledge</strong>. This metric combines our <strong>Tempo</strong> metric with other contextual info, such as player weight at key positions, to understand how team personnel and play-calling tendencies combine to predict pass rates (TODO: Figure what exactly I put inside this)</p>
+<li><p><strong>Tempo Including Contextual Knowledge (TICK)</strong>: This metric combines our <strong>Tempo</strong> metric with other contextual info, such as player weight at key positions, to understand how play-calling tendencies combine with team personnel to predict pass rates (see section e)</p>
 </li>
-<li><p><strong>Defensive Congestion</strong>, i.e., the mean pairwise distance between players on defense, with more recent frames weighted more heavily. The clear benefit of this is that we can pick up nuanced info that coarser features, such as offensive formations (e.g., 2x2) and men-in-box counts, may miss.</p>
+<li><p><strong>Defensive Congestion Index (DCI)</strong>, i.e., the mean pairwise distance between players on defense, with more recent frames weighted more heavily. The clear benefit of this is that we can pick up nuanced info that coarser features, such as offensive formations (e.g., 2x2) and men-in-box counts, may miss.</p>
+</li>
+<li><p><strong>FAD (Final Acceleration Difference)</strong>: Difference in maximum acceleration between the fastest- and second-fastest-accelerating players in the last few pre-snap frames. Specifically, these are the 15th-to-last through fifth-to-last frames, in order to provide a realistic buffer before the ball is actually snapped.</p>
 </li>
 </ul>
 <h3 id="TODO:-find-graphic-for-here;-maybe-dots-demonstrating-'defensive-congestion-index?">TODO: find graphic for here; maybe dots demonstrating 'defensive congestion index?<a class="anchor-link" href="#TODO:-find-graphic-for-here;-maybe-dots-demonstrating-'defensive-congestion-index?">¶</a></h3>
@@ -7642,8 +7644,8 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>The above graph shows just how impactful these 'negative' formations are in depressing our expected pass rate. This is an example from a <strong>Cincinnati Bengals</strong> drive (todo: cite which week?), one of the most pass-happy teams over the course of the 2022 season at an average 62% pass rate. Our model thinks that, given all the other information we provide it, most of the Bengals are more likely to pass than not on almost all the plays of the drive.</p>
-<p>This of course tracks with the common understanding that Bengals QB Joe Burrow strongly prefers to pass from Shotgun, perhaps implying a departure from this could significantly depress the expected pass rate. Yet the extent to which knowing a formation is negatively related to passing depresses our expected pass rate is remarkable, and clearly informative.</p>
+<p>The above graph shows just how big a tell formations are in whether a team will pass or not. Above an example from a week 7 <strong>Cincinnati Bengals</strong> drive, who were one of the most pass-happy teams over the course of the 2022 season, with an overall pass rate of 62%. Our model thinks that, given all the data we provide it, the Bengals were more likely to pass than run on almost all the plays of the drive.</p>
+<p>This of course tracks with the common understanding that Bengals QB Joe Burrow strongly prefers to pass from Shotgun formation. The Bengals lining up in one of our flagged "run formations" would thus be an even bigger tell than usual that they're going to run th ball.</p>
 </div>
 </div>
 </div>
@@ -7654,18 +7656,7 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h4 id="TODO:-maybe-find-a-way-to-line-up-what-actually-happened-here?-find-a-way-to-cleanly-present-as-a-series-of-dots-or-something-what-actually-happened-vis-a-vis-run-pass?">TODO: maybe find a way to line up what actually happened here? find a way to cleanly present as a series of dots or something what actually happened vis a vis run pass?<a class="anchor-link" href="#TODO:-maybe-find-a-way-to-line-up-what-actually-happened-here?-find-a-way-to-cleanly-present-as-a-series-of-dots-or-something-what-actually-happened-vis-a-vis-run-pass?">¶</a></h4>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="d)-Motion">d) Motion<a class="anchor-link" href="#d)-Motion">¶</a></h3><p>Below is a typical example of pre-snap motion from a Week 6 matchup between Miami and Minnesota. In it, we see Miami (left, offense) running back Raheem Mostert move across the formation right before the snap. Such an example is where our <strong>FAD (Final Acceleration Difference)</strong> metric proves most useful, since it tells us how much faster the likely motion player (i.e. whoever has the highest acceleration in the last few frames pre-snap) is going than the second-fastest player. Since only one player can be in-motion when the ball snaps—though many teams push this rule to its limits—this intuitively helps us suss out whether a player went in motion on a play.</p>
+<h3 id="d)-Motion">d) Motion<a class="anchor-link" href="#d)-Motion">¶</a></h3><p>Below is a typical example of pre-snap motion from a Week 6 matchup between Miami and Minnesota. In it, we see Miami (left, offense) running back Raheem Mostert move across the formation right before the snap. Such an example is where our <strong>FAD (Final Acceleration Difference)</strong> metric proves most useful, since it tells us how much faster the likely motion player (in terms of acceleration) is going than the second-fastest player. Since only one player can be in-motion when the ball snaps—though many teams push this rule to its limits—this intuitively helps us suss out whether a player went in motion on a play.</p>
 <div>
 <center><img alt="No description has been provided for this image" height="390" src="image/mostert_w6_motion.gif" width="750"/></center>
 </div>
@@ -7694,6 +7685,28 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="e)-Tempo-Including-Contextual-Knowledge-(TICK)">e) Tempo Including Contextual Knowledge (TICK)<a class="anchor-link" href="#e)-Tempo-Including-Contextual-Knowledge-(TICK)">¶</a></h3><p>A key concept we sought to include in our model is the idea of <strong>tempo</strong>, i.e., the pace at which a team marches down the field. The core tempo metric itself is fairly simple: within an ongoing drive, we consider the mean time a team's snapped the ball at, the pass rate for the current drive, and the mean EPA this drive. Perhaps counterintuitively, mean EPA negatively relates to pass rate on a drive, so we subtract it. This is perhaps because if a team has already had a couple explosive (i.e., high-EPA) plays, and the drive is still ongoing, they may now be in the red zone, and thus now prefer to run the ball.</p>
+<p>$$tempo = .1*mean\_clocksnap*drive\_pass\_rate -mean\_epa$$</p>
+<p>While this tempo information is mildly useful on its own, we also want to incorporate info about the <i>personnel</i> teams use to better gauge team pass tendencies. Enter the <strong>xpass_bmi</strong> metric, which seeks to incorporate both contextual and historical data:</p>
+<p>$$xpass\_bmi = off\_xpass*box\_ewm\_dl\_bmi -.4*qb\_pass\_rate\_ewm$$</p>
+<p>off xpass—not to be confused with from <strong>xpass_situational</strong>—bakes in weight info and the like implicitly, as the presence of run-blocking tight ends, for example, will depress expected pass rate.</p>
+<p>$$off\_xpass = \frac{1}{N}\sum_{i=1}^{N} player\_xpass_i$$</p>
+<p>where an individual player's xpass, calculated through the week prior, is defined below, where <i>m</i> is the current week, <i>n</i> is the number of plays in a given game, and <i>x</i> is whether the player's team passed the ball (note: n is usually used for a constant, but is kind of variable here; how to best represent?)</p>
+<p>$$player\_xpass_{m} = \frac{1}{m-1}\frac{1}{n}\sum_{i=1}^{m-1}\sum_{j=1}^{n} x_{ij}$$</p>
+<p>(define dl bmi etc)</p>
+<p>$$TICK = tempo*xpass\_bmi$$</p>
+<p>TODO: off_xpass, pass_rate_ewm (do a sum over 1 thru N where N is the latest week preceding this one?)</p>
+<p>$$box_ewm_dl_bmi = box_ewm*mean_dl_bmi</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h1 id="III.-Model">III. Model<a class="anchor-link" href="#III.-Model">¶</a></h1>
 </div>
 </div>
@@ -7706,7 +7719,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h3 id="a)-Model-design">a) Model design<a class="anchor-link" href="#a)-Model-design">¶</a></h3><p>Our model itself was a LightGBM model, with a maximum depth of 5 as to prevent overfitting. For the 9 weeks of tracking data provided, we trained from weeks 3-7, using week 8 as a validation set, then week 9 as test proper.</p>
-<p>The first two weeks are excluded for their heavy reliance on prior-year information, which is much noisier than current-season info. This is an issue acknowledged by members of the football analytic community such as FTN's Aaron Schatz, who provides weighted version of his DVOA metric that weighs recent weeks more highly as the season goes on, and thus becomes more predictive.</p>
+<p>The first two weeks are excluded for their heavy reliance on prior-year information, which is much noisier than current-season info. This is an issue acknowledged by members of the football analytic community, including FTN's Aaron Schatz. He provides a weighted version of his DVOA metric that weighs recent weeks more highly as the season goes on, becoming more predictive as a result.</p>
 <p>Thus, given that our model is set up to predict on mid-season plays, fitting on more recent data is empirically sound. The benefit of this is seen in how the model gets a 3% performance boost in test over validation after re-fitting, showing the likely benefit of additional data to our model.</p>
 </div>
 </div>
@@ -7718,7 +7731,7 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>(TODO: maybe find better visual aid here. tree feels out of place/underwhelming)</p>
+<p>(TODO: Make slightly less info-dense/horizontal version of this)</p>
 <div>
 <center><img alt="No description has been provided for this image" height="600" src="image/tree_viz.png" width="1300"/></center>
 </div>
@@ -7734,7 +7747,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h2 id="b)-Model-performance">b) Model performance<a class="anchor-link" href="#b)-Model-performance">¶</a></h2><p>As previously discussed, our model beats most play-level benchmarks in the public literature for play-level pass prediction. The model we present is, in our opinion, the best blend of interpretability and generalization we've achieved.</p>
-<p>Our model shows a slight bias toward predicting passes; however, this is to be expected, since the general tendency is for teams to pass more frequently. Notably, its misses are essentially equal between events that were runs and passes, suggesting a decent generalizibility.</p>
+<p>Our model shows a slight bias toward predicting teams will pass; however, this is to be expected, since teams generally pass more frequently than they run. Notably, its misses are essentially equal between events that were runs and passes, which bodes well for its ability to generalize.</p>
 <div>
 <center><img <="" alt="No description has been provided for this image" center="" height="500" src="image/performance_example.png" width="550"/>
 </center></div>
@@ -7776,17 +7789,13 @@ a.anchor-link {
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
-<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span> 
-</pre></div>
-</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 </div>
 </div>
 </div>

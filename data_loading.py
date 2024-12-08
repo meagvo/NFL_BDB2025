@@ -315,6 +315,7 @@ def count_box_bmi(df_play, df_players, df_player_play):
     df_play = df_play.merge(dl_df,how='left')
 
     # get final metric
+    df_play['mean_DL_bmi'] = df_play['mean_DL_bmi'].fillna(.05) # fill na's with .05
     df_play['box_ewm_dl_bmi'] = df_play['box_ewm']*df_play['mean_DL_bmi']
     df_play.drop(columns=['n_defense_box'],inplace=True)
     

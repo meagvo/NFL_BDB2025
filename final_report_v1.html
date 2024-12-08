@@ -7530,7 +7530,7 @@ a.anchor-link {
 <h1 id="I.-Introduction">I. Introduction<a class="anchor-link" href="#I.-Introduction">¶</a></h1><p>This submission aims to build a better methodology for predicting, pre-snap, whether a team will pass the ball. To do this, we created the <strong>Run-Pass Oracle</strong> model, built on top of a LightGBM architecture. We managed to achieve performance that surpasses state-of-the-art literature, while still maintaining interpretability.</p>
 <p>Much of this performance is driven by feature engineering, including metrics to track pre-snap factors such as <strong>Rectified Motion Value (RMV)</strong>, <strong>Defensive Congestion Index (DCI)</strong>, and <strong>Tempo Including Contextual Knowledge (TICK)</strong>. These features heavily utilize the provided tracking data, and show a big boost over extant models, many of which barely eclipse 70% accuracy (those that do coming with major caveats). Perhaps most notable among thesse is Ben Baldwin's expected pass <a href="https://opensourcefootball.com/posts/2020-09-28-nflfastr-ep-wp-and-cp-models/">model</a>; however, as the graphic below demonstrates, its predictions are still noisy:</p>
 <div>
-<center><img alt="No description has been provided for this image" height="400" src="image/pass_rate_thru_w7.png" width="600"/></center>
+<center><img alt="No description has been provided for this image" height="600" src="image/pass_rate_thru_w7.png" width="800"/></center>
 </div>
 <p>Baldwin's model includes important context like down and distance, and knows a little about team strength due to using Vegas odds. However, it doesn't incorporate the rich tracking data utilized in our model, and also misses significantly on teams like the Chiefs and Bills, whose superstar QB's make them far more pass-happy than expected. By incorporating tracking data, our model gets nearly a ten-percent boost over earlier literature on both our test and validation sets, providing hope for generalizibility, while still demonstrating immediate usefulness.</p>
 </div>
@@ -7582,7 +7582,7 @@ a.anchor-link {
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h3 id="b)-Feature-impact-analysis">b) Feature impact analysis<a class="anchor-link" href="#b)-Feature-impact-analysis">¶</a></h3><p>Below are our shapley values for our dataset. Given the breadth of features that our <strong>Situational Expected Pass</strong> metric encompasses, it makes sense why it would be so important. It does not, however, render the other features entirely useless, as they each, on average, still makes significant contributions to our prediction values.</p>
 <div>
-<center><img alt="No description has been provided for this image" height="375" src="image/shap_basic.png" width="750"/></center>
+<center><img alt="No description has been provided for this image" height="500" src="image/shap_subplots.png" width="1500"/></center>
 </div>
 </div>
 </div>
@@ -7594,10 +7594,6 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>The below graph explores Shapley values from a different angle, looking at a broader distribution of impact (vs. just average):</p>
-<div>
-<center><img alt="No description has been provided for this image" height="425" src="image/fancy_shapley.png" width="850"/></center>
-</div>
 <p>Given most of our features are positively correlated with passing, we see an expected result where higher feature values (red) imply higher a pass rate (more red points to the right). The inverse—i.e., low (blue) values depressing pass rate—is also generally true, excepting our <strong>negative formations</strong> feature, which, when flagged as True, should lower expected pass rate (see next section). One key thing to note is how while the mean Shapley values paint a meaningful disparity between our four lower features, they each exhibit similar distributions in our violin plot, and are thus closer to equal importance than the prior graph would imply.</p>
 </div>
 </div>
@@ -7733,7 +7729,7 @@ a.anchor-link {
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p>(TODO: Make slightly less info-dense/horizontal version of this)</p>
 <div>
-<center><img alt="No description has been provided for this image" height="200" src="image/play3032.png" width="1300"/></center>
+<center><img alt="No description has been provided for this image" height="300" src="image/play3032.png" width="1900"/></center>
 </div>
 <p>The above graphic demonstrates what a typical tree for our LightGBM model looks like. Though formational and situational (down, distance, etc.) info are quite important, it's crucial to note that all our created metrics are utilized. That we can incorporate all these features to a meaningful extent while limiting our maximum depth to 4 (to prevent overfitting) bodes well for our model design.</p>
 </div>
@@ -7749,7 +7745,7 @@ a.anchor-link {
 <h2 id="b)-Model-performance">b) Model performance<a class="anchor-link" href="#b)-Model-performance">¶</a></h2><p>As previously discussed, our model beats most play-level benchmarks in the public literature for play-level pass prediction. The model we present is, in our opinion, the best blend of interpretability and generalization we've achieved.</p>
 <p>Our model shows a slight bias toward predicting teams will pass; however, this is to be expected, since teams generally pass more frequently than they run. Notably, its misses are essentially equal between events that were runs and passes, which bodes well for its ability to generalize.</p>
 <div>
-<center><img <="" alt="No description has been provided for this image" center="" height="500" src="image/performance_example.png" width="550"/>
+<center><img <="" alt="No description has been provided for this image" center="" height="400" src="image/model_performance_subplots.png" width="900"/>
 </center></div>
 </div>
 </div>

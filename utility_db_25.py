@@ -1,5 +1,5 @@
 from sklearn.model_selection import StratifiedKFold,cross_val_score
-from sklearn.metrics import roc_auc_score, accuracy_score, confusion_matrix, ConfusionMatrixDisplay, f1_score, precision_score, recall_score
+from sklearn.metrics import roc_auc_score, accuracy_score,roc_curve, auc, confusion_matrix, ConfusionMatrixDisplay, f1_score, precision_score, recall_score
 import numpy as np
 from sklearn.base import clone
 from tqdm import tqdm
@@ -536,10 +536,29 @@ def test_ML(test_data, model,final_features,transformer_impute,transformer_scale
     
     cm = confusion_matrix(y_test, y_pred)
 
-    cm_display = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels = [0, 1])
+    cm_display = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels = ["Run", "Pass"])
+  
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+    cm_display.plot(ax=axes[0])
+    axes[0].set_title('Confusion Matrix')
 
-    cm_display.plot()
+
+
+    probs = model.predict_proba(X)
+    preds = probs[:,1]
+    fpr, tpr, threshold = roc_curve(y_test, preds)
+    roc_auc = auc(fpr, tpr)
+
+    axes[1].plot(fpr, tpr, 'b', label = 'AUC = %0.2f' % roc_auc)
+    axes[1].set_title('Receiver Operating Characteristic')
+    axes[1].legend(loc = 'lower right')
+    axes[1].plot([0, 1], [0, 1],'r--')
+    
+    axes[1].set_ylabel('True Positive Rate')
+    axes[1].set_xlabel('False Positive Rate')
+    plt.tight_layout()
     plt.show()
+
 
 ############################################
 #

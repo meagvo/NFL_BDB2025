@@ -558,6 +558,7 @@ def test_ML(test_data, model,final_features,transformer_impute,transformer_scale
     
     axes[1].set_ylabel('True Positive Rate')
     axes[1].set_xlabel('False Positive Rate')
+    plt.suptitle('AUC: .892, Accuracy: .825')
     plt.tight_layout()
     plt.show()
 

@@ -147,7 +147,7 @@ def aggregate_test(df_plays, df_player_plays, df_players, tracking_fname_list, d
     merged_base = merged_base.merge(def_df,how='left',left_on=['gameId','playId'], right_on=['gameId','playId'])
 
     # integrate tempo, bmi/box data
-    merged_base = merged_base.merge(df_plays[['gameId','playId','tempo','box_ewm_dl_bmi','box_ewm','mean_DL_bmi']],how='left',left_on=['gameId','playId'], right_on=['gameId','playId'])
+    merged_base = merged_base.merge(df_plays[['gameId','playId','tempo','box_bmi','box_ewm','mean_DL_bmi']],how='left',left_on=['gameId','playId'], right_on=['gameId','playId'])
     merged_base = merged_base.merge(rate_df,how='left',on=['gameId','playId'])
 
     return pd.concat([df_final,merged_base.iloc[:,2:]],axis=1)
@@ -276,7 +276,7 @@ def aggregate_train( df_plays, df_player_plays, df_players, tracking_fname_list,
     merged_base = merged_base.merge(def_df,how='left',left_on=['gameId','playId'], right_on=['gameId','playId'])
 
     # add tempo, bmi/box data, pass rate info
-    merged_base = merged_base.merge(df_plays[['gameId','playId','tempo','box_ewm_dl_bmi','box_ewm','mean_DL_bmi']],how='left',left_on=['gameId','playId'], right_on=['gameId','playId'])
+    merged_base = merged_base.merge(df_plays[['gameId','playId','tempo','box_bmi','box_ewm','mean_DL_bmi']],how='left',left_on=['gameId','playId'], right_on=['gameId','playId'])
     merged_base = merged_base.merge(rate_df,how='left',on=['gameId','playId'])
 
     return pd.concat([df_final,merged_base.iloc[:,2:]],axis=1)
@@ -316,7 +316,7 @@ def count_box_bmi(df_play, df_players, df_player_play):
 
     # get final metric
     df_play['mean_DL_bmi'] = df_play['mean_DL_bmi'].fillna(.05) # fill na's with .05
-    df_play['box_ewm_dl_bmi'] = df_play['box_ewm']*df_play['mean_DL_bmi']
+    df_play['box_bmi'] = df_play['box_ewm']*df_play['mean_DL_bmi']
     df_play.drop(columns=['n_defense_box'],inplace=True)
     
     return df_play

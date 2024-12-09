@@ -530,7 +530,9 @@ def test_ML(test_data, model,final_features,transformer_impute,transformer_scale
         #    X_transform[feature]=X_transform[feature].astype(int)
 
     y_pred=model.predict(X)
-    print(f"AUC --> {roc_auc_score(y_test, y_pred)}")
+    probs = model.predict_proba(X)
+    preds = probs[:,1]
+    print(f"AUC --> {roc_auc_score(y_test, preds)}")
     print(f"Accuracy --> {accuracy_score(y_test, y_pred)}")
     
     

@@ -79,13 +79,13 @@ def graph_run_pass():
 #
 ################################################################
 
-def get_partial_pass_rates(year: int, max_week: int):
+def get_partial_pass_rates(year: int, max_week: int, min_week=0):
     
     # pull year, week selection
     df_rush_pre = nfl.import_ngs_data(stat_type='rushing', years=[year])
     df_pass_pre = nfl.import_ngs_data(stat_type='passing', years=[year])
-    rush_sub = df_rush_pre[(df_rush_pre['week'] > 0) & (df_rush_pre['week'] <= max_week)]
-    pass_sub = df_pass_pre[(df_pass_pre['week'] > 0) & (df_pass_pre['week'] <= max_week)]
+    rush_sub = df_rush_pre[(df_rush_pre['week'] > min_week) & (df_rush_pre['week'] <= max_week)]
+    pass_sub = df_pass_pre[(df_pass_pre['week'] > min_week) & (df_pass_pre['week'] <= max_week)]
 
     # get aggregate stats
     df_rush = rush_sub[['team_abbr', 'rush_attempts']].groupby('team_abbr').sum().reset_index()
@@ -114,8 +114,8 @@ def get_median_feature(data,feature):
 #
 ################################################################
 
-def graph_feature_rate(year,max_week,feature,data,feat_title=None):
-    pr_cy = get_partial_pass_rates(year, max_week)
+def graph_feature_rate(year,max_week,feature,data,feat_title=None,min_week=0):
+    pr_cy = get_partial_pass_rates(year, max_week,min_week)
     med_feat = get_median_feature(data,feature)
     pre_logo_df = pr_cy.merge(med_feat,left_on='team_abbr',right_on='possessionTeam',how='left')
     df=pd.merge(pre_logo_df, get_logo_df(), on='team_abbr', how='left')
